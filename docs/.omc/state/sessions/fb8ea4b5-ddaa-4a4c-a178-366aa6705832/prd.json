@@ -1,0 +1,227 @@
+{
+  "project": "할 일 관리 앱 (Yearly Goal → Weekly Plan → Task)",
+  "planRef": "docs/.omc/plans/todo-app-plan.md",
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "프로젝트 스캐폴딩 및 의존성",
+      "priority": 1,
+      "passes": false,
+      "acceptanceCriteria": [
+        "package.json에 next, react, react-dom, typescript, tailwindcss가 dependencies/devDependencies로 존재",
+        "package.json dependencies에 mongodb, zod, @dnd-kit/core, @dnd-kit/sortable 포함",
+        "tsconfig.json에 @/* path alias 설정",
+        "npm run build 가 초기 스캐폴드 상태에서 에러 없이 성공",
+        "npm run lint 가 설정 에러 없이 실행됨"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "MongoDB 연결 모듈",
+      "priority": 2,
+      "passes": false,
+      "acceptanceCriteria": [
+        "src/lib/mongodb.ts 가 dev/prod 모든 환경에서 전역 캐시된 clientPromise를 export",
+        "MongoClient 옵션에 maxPoolSize: 10 포함",
+        "같은 프로세스에서 두 번 import해도 동일한 clientPromise 인스턴스가 재사용됨(코드 검토로 확인, dev-only 캐싱 아님)"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Zod 스키마 및 공유 타입",
+      "priority": 3,
+      "passes": false,
+      "acceptanceCriteria": [
+        "yearlyGoals, weeklyPlans, tasks, taskEvents 4개 컬렉션에 대한 Zod 스키마 정의(plan.md 2절 필드와 일치)",
+        "title: required, trim, max 200자 / description: max 2000자 검증 포함",
+        "status enum이 'todo'|'doing'|'done'만 허용",
+        "z.infer로 파생된 TypeScript 타입 export"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "날짜/주(week) 유틸리티",
+      "priority": 4,
+      "passes": false,
+      "acceptanceCriteria": [
+        "APP_TZ = 'Asia/Seoul' 상수 export",
+        "getWeekStart(date, tz)가 월요일 시작 'YYYY-MM-DD' 반환",
+        "단위 테스트: 2026-08-25(화) 입력 시 2026-08-24 반환",
+        "단위 테스트: 연도 경계(2026-12-29 화요일 등) 입력 시 정확한 월요일 반환(off-by-one 없음)"
+      ]
+    },
+    {
+      "id": "US-005",
+      "title": "Yearly Goal CRUD",
+      "priority": 5,
+      "passes": false,
+      "acceptanceCriteria": [
+        "createGoal/updateGoal/deleteGoal Server Action 구현",
+        "deleteGoal 실행 시 하위 Weekly Plan은 삭제되지 않고 yearlyGoalId가 null로 설정됨(고아 처리)",
+        "빈 문자열/공백만 있는 title 또는 200자 초과 title은 Zod 검증에서 거부됨",
+        "/goals 목록 페이지와 /goals/[id] 상세 페이지 렌더링"
+      ]
+    },
+    {
+      "id": "US-006",
+      "title": "Weekly Plan CRUD",
+      "priority": 6,
+      "passes": false,
+      "acceptanceCriteria": [
+        "createPlan/updatePlan/deletePlan Server Action 구현",
+        "createPlan은 US-004 유틸로 weekStart/weekEnd를 계산하고 yearlyGoalId: null 허용",
+        "{yearlyGoalId:1, weekStart:1} 부분 unique 인덱스(yearlyGoalId가 not null인 문서만 대상) 생성",
+        "같은 goal 아래 같은 weekStart로 중복 생성 시도 시 원시 E11000이 아닌 한국어 에러 메시지 반환",
+        "deletePlan 실행 시 하위 Task는 삭제되지 않고 weeklyPlanId가 null로 설정됨"
+      ]
+    },
+    {
+      "id": "US-007",
+      "title": "Task CRUD",
+      "priority": 7,
+      "passes": false,
+      "acceptanceCriteria": [
+        "createTask/updateTask/deleteTask Server Action 구현",
+        "createTask는 weeklyPlanId: null 허용",
+        "모든 [id] 기반 조회/수정/삭제 경로에 ObjectId.isValid() 가드 존재 — 잘못된 id 문자열이 500/BSONError가 아닌 명확한 404류 응답을 반환",
+        "deleteTask는 task 문서를 하드 삭제"
+      ]
+    },
+    {
+      "id": "US-008",
+      "title": "상태 전이 및 taskEvents 로그",
+      "priority": 8,
+      "passes": false,
+      "acceptanceCriteria": [
+        "updateTaskStatus(taskId, newStatus) Server Action이 status를 갱신하고 done 전이 시 completedAt 설정, done 이탈 시 completedAt을 null로 초기화",
+        "모든 상태 전이마다 taskEvents에 fromStatus/toStatus/weeklyPlanId/yearlyGoalId 스냅샷/occurredAt을 기록하는 append-only 문서 삽입",
+        "task를 삭제해도 관련 taskEvents 문서는 남아있음"
+      ]
+    },
+    {
+      "id": "US-009",
+      "title": "진행률 계산(derive, 저장 안 함)",
+      "priority": 9,
+      "passes": false,
+      "acceptanceCriteria": [
+        "getWeeklyPlanProgress(planId): task 3개 중 done 2개 → 66 반환(내림), 저장된 카운터 없이 매번 tasks 컬렉션에서 집계",
+        "getWeeklyPlanProgress: task 0개 → null 반환",
+        "getYearlyGoalProgress(goalId): 하위 plan 진행률이 50, 100, null(빈 plan)일 때 → 75 반환(null 제외 단순 평균)",
+        "위 세 케이스에 대한 단위 테스트 작성 및 통과",
+        "unassigned task(weeklyPlanId: null)는 어떤 진행률 계산에도 포함되지 않음을 검증하는 테스트 포함"
+      ]
+    },
+    {
+      "id": "US-010",
+      "title": "칸반 보드 UI (DnD)",
+      "priority": 10,
+      "passes": false,
+      "acceptanceCriteria": [
+        "/plans/[id] 페이지가 @dnd-kit/core + @dnd-kit/sortable로 todo/doing/done 3컬럼 렌더링",
+        "카드 drop 시 updateTaskStatus 호출 + useOptimistic으로 페이지 새로고침 없이 진행률 바 즉시 갱신",
+        "카드를 이미 속한 컬럼에 drop하면 서버 요청 없음(no-op)",
+        "각 카드에 드래그 없이 상태를 바꿀 수 있는 비-DnD 컨트롤(드롭다운/버튼) 존재",
+        "npm run build && npm run start 프로덕션 빌드에서 보드와 DnD가 정상 동작(dev 전용 동작이 아님)"
+      ]
+    },
+    {
+      "id": "US-011",
+      "title": "오프라인/실패 시 롤백",
+      "priority": 11,
+      "passes": false,
+      "acceptanceCriteria": [
+        "updateTaskStatus 실패를 시뮬레이션했을 때 카드가 원래 컬럼으로 되돌아감",
+        "실패 시 진행률 바 표시값도 원래 값으로 되돌아감",
+        "실패 시 에러 토스트/메시지가 표시됨"
+      ]
+    },
+    {
+      "id": "US-012",
+      "title": "미지정 할 일 뷰 및 재상위지정",
+      "priority": 12,
+      "passes": false,
+      "acceptanceCriteria": [
+        "/tasks/unassigned 페이지가 weeklyPlanId: null인 task 목록을 표시",
+        "미지정 task를 특정 Weekly Plan에 배정(재상위지정)하는 UI 동작 구현, done 상태 task도 재상위지정 가능",
+        "재상위지정 후 이전/새 Weekly Plan의 진행률이 즉시 올바르게 재계산됨(derive 방식이므로 자동 성립, 통합 테스트로 확인)"
+      ]
+    },
+    {
+      "id": "US-013",
+      "title": "홈(/) 라우트",
+      "priority": 13,
+      "passes": false,
+      "acceptanceCriteria": [
+        "/ 접근 시 Asia/Seoul 기준 오늘이 속한 주의 Weekly Plan을 조회",
+        "해당 주 계획이 있으면 해당 계획의 보드로 리다이렉트/렌더링",
+        "해당 주 계획이 없으면 생성 유도 빈 상태 화면 표시"
+      ]
+    },
+    {
+      "id": "US-014",
+      "title": "연간 목표 대시보드 (P1)",
+      "priority": 14,
+      "passes": false,
+      "acceptanceCriteria": [
+        "/goals/[id]가 US-009의 getYearlyGoalProgress 결과로 전체 진행률을 표시",
+        "하위 Weekly Plan 목록에 각각의 진행률(또는 '할 일 없음')이 함께 표시됨"
+      ]
+    },
+    {
+      "id": "US-015",
+      "title": "기한 배지 및 탭-오픈 알림 (P1)",
+      "priority": 15,
+      "passes": false,
+      "acceptanceCriteria": [
+        "Task 카드가 dueDate와 Asia/Seoul 기준 오늘을 비교해 '오늘 마감'/'지연' 배지를 표시",
+        "테스트 케이스: dueDate=2026-08-25, 평가 시각 2026-08-25T08:00+09:00(=2026-08-24T23:00 UTC) → '오늘 마감'으로 정확히 판정",
+        "Notification 권한 요청은 페이지 로드 시가 아닌 사용자 제스처(버튼 클릭) 이후에만 트리거됨",
+        "notifiedAt 필드 또는 동등한 메커니즘으로 같은 날 동일 task에 대해 중복 알림이 발생하지 않음",
+        "완료된(done) task는 기한 알림을 발생시키지 않음"
+      ]
+    },
+    {
+      "id": "US-016",
+      "title": "다음 주 계획 만들기 (P1)",
+      "priority": 16,
+      "passes": false,
+      "acceptanceCriteria": [
+        "Weekly Plan 상세에서 버튼 클릭 시 weekStart+7일로 새 plan과 그 하위 task들을 복제",
+        "복제된 task는 status가 todo로 리셋되고 completedAt이 비워짐, dueDate가 있으면 +7일 이동",
+        "같은 plan에서 버튼을 두 번 눌러도 다음 주 plan은 1개만 생성됨(US-006의 unique 인덱스로 idempotent)"
+      ]
+    },
+    {
+      "id": "US-017",
+      "title": "통계 페이지 — 고정 3뷰 (P1)",
+      "priority": 17,
+      "passes": false,
+      "acceptanceCriteria": [
+        "/stats가 정확히 3개 뷰만 렌더링: (a) 최근 12주 주간 완료율 추이 (b) 최근 30일 일별 완료 개수 (c) Yearly Goal별 누적 완료 수",
+        "3개 뷰 모두 taskEvents 컬렉션 집계 기반으로 계산되어, 삭제된 task도 통계에 반영됨"
+      ]
+    },
+    {
+      "id": "US-018",
+      "title": "noindex 헤더 및 인덱스 생성 스크립트",
+      "priority": 18,
+      "passes": false,
+      "acceptanceCriteria": [
+        "next.config.ts가 모든 라우트 응답에 X-Robots-Tag: noindex 헤더를 설정",
+        "scripts/init-indexes.ts가 tasks의 {weeklyPlanId,status}, {dueDate} 인덱스와 weeklyPlans의 부분 unique {yearlyGoalId,weekStart} 인덱스를 생성",
+        "인덱스 생성 스크립트가 npm script로 실행 가능"
+      ]
+    },
+    {
+      "id": "US-019",
+      "title": "성능/모바일 QA",
+      "priority": 19,
+      "passes": false,
+      "acceptanceCriteria": [
+        "시드 스크립트가 2,000개 Task 문서를 여러 Weekly Plan에 분산 생성",
+        "US-018 인덱스 적용 상태에서 보드/통계 쿼리 응답 시간이 progress.txt에 기록됨",
+        "390px 너비 뷰포트에서 드래그 동작과 보드 영역 세로 스크롤이 공존함(touch-action 설정 확인, 코드 검토 및 실행 결과로 문서화)"
+      ]
+    }
+  ]
+}

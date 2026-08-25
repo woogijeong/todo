@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "entries": {
+    "445ed27a3872b681d98190bae61ccb84954e1bc4e140df5370be958dee776b3a": {
+      "last_emitted_at_ms": 1787665936244,
+      "message": "Verify changes work after editing. Test functionality before marking complete."
+    },
+    "79a93d4a2f8f50b95f852280616242fee1855dc99a3c75211917f55e72e95fae": {
+      "last_emitted_at_ms": 1787665839280,
+      "message": "Use parallel execution for independent tasks. Use run_in_background for long operations (npm install, builds, tests)."
+    },
+    "6daa5e72687c0efcef36160f8c87949519f17a4960d8a1b8e280f16c604d5a1c": {
+      "last_emitted_at_ms": 1787664241660,
+      "message": "Spawning agent: unknown (inherit) | Task: check-in"
+    },
+    "ee0039b50eb538010b20e6e4e9ebffb04fad9e517e7a74dc6780164a592cc26b": {
+      "last_emitted_at_ms": 1787664175573,
+      "message": "Spawning agent: oh-my-claudecode:analyst (inherit) | Task: Analyze hidden requirements for todo app plan"
+    },
+    "466399dafa2d20f60587180bad0a07358eb7f2bce724df0ff682f038ad33f5ad": {
+      "last_emitted_at_ms": 1787663912187,
+      "message": "Read multiple files in parallel when possible for faster analysis."
+    }
+  },
+  "updated_at": "2026-08-25T13:52:16.244Z"
+}
