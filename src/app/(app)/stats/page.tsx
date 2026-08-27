@@ -11,7 +11,7 @@ export default async function StatsPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-bold">통계</h1>
+      <h1 className="text-2xl font-semibold text-ink">통계</h1>
       <StatsExplorer months={months} />
     </main>
   );

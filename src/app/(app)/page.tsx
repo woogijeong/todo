@@ -12,19 +12,6 @@ import { requirePageUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-// Cycled by week index in the monthly bar chart below, so each week reads as
-// a distinct bar rather than one undifferentiated blue block. Written out as
-// literal class strings (not built from a template) so Tailwind's content
-// scanner can find them.
-const WEEK_BAR_COLORS = [
-  'bg-blue-500',
-  'bg-emerald-500',
-  'bg-amber-500',
-  'bg-purple-500',
-  'bg-rose-500',
-  'bg-cyan-500',
-];
-
 async function createThisWeekPlanAction() {
   'use server';
 
@@ -60,30 +47,30 @@ export default async function Home() {
 
   return (
     <main className="mx-auto max-w-4xl p-6">
-      <h1 className="text-2xl font-semibold">대시보드</h1>
+      <h1 className="text-[28px] font-bold tracking-tight text-ink">대시보드</h1>
 
       <div className="mt-6 flex flex-col gap-4">
-        <section className="rounded border border-gray-200 p-4">
-          <h2 className="text-sm font-semibold text-gray-500">이번 주 계획</h2>
+        <section className="rounded-card border border-hairline p-6">
+          <h2 className="text-base font-semibold text-ink">이번 주 계획</h2>
           {currentPlan ? (
             <div className="mt-3">
-              <Link href={`/plans/${currentPlan._id}`} className="font-medium hover:underline">
+              <Link href={`/plans/${currentPlan._id}`} className="font-medium text-ink hover:underline">
                 {currentPlan.title}
               </Link>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted">
                 {currentPlan.weekStart} ~ {currentPlan.weekEnd}
               </p>
               <WeekChecklist initialTasks={currentPlanTasks} />
             </div>
           ) : (
             <div className="mt-3">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted">
                 {thisWeekStart} 주에 대한 계획이 아직 없습니다.
               </p>
               <form action={createThisWeekPlanAction} className="mt-3">
                 <button
                   type="submit"
-                  className="rounded bg-black px-3 py-1.5 text-sm text-white"
+                  className="rounded-btn bg-primary px-4 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary-active"
                 >
                   이번 주 계획 만들기
                 </button>
@@ -92,33 +79,33 @@ export default async function Home() {
           )}
         </section>
 
-        <section className="rounded border border-gray-200 p-4">
+        <section className="rounded-card border border-hairline p-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-500">연간 계획</h2>
-            <Link href="/goals" className="text-xs text-blue-600 hover:underline">
+            <h2 className="text-base font-semibold text-ink">연간 계획</h2>
+            <Link href="/goals" className="text-sm text-muted hover:underline">
               전체 보기
             </Link>
           </div>
           {goals.length === 0 ? (
-            <p className="mt-3 text-sm text-gray-500">
+            <p className="mt-3 text-sm text-muted">
               등록된 연간 계획가 없습니다.{' '}
-              <Link href="/goals" className="text-blue-600 hover:underline">
+              <Link href="/goals" className="text-ink hover:underline">
                 새로 만들기
               </Link>
             </p>
           ) : (
-            <ul className="mt-3 divide-y divide-gray-200">
+            <ul className="mt-3 divide-y divide-hairline">
               {goals.map((goal, index) => (
                 <li key={goal._id} className="py-3">
                   <Link
                     href={`/goals/${goal._id}`}
-                    className="flex items-center justify-between gap-4 hover:underline"
+                    className="flex items-center justify-between gap-4 text-ink hover:underline"
                   >
                     <span>
                       <span className="font-medium">{goal.title}</span>
-                      <span className="ml-2 text-sm text-gray-500">{goal.year}</span>
+                      <span className="ml-2 text-sm text-muted">{goal.year}</span>
                     </span>
-                    <span className="w-28 shrink-0 text-right text-sm text-gray-600">
+                    <span className="w-28 shrink-0 text-right text-sm text-muted">
                       {goalProgresses[index] === null ? '하위 계획 없음' : `${goalProgresses[index]}%`}
                     </span>
                   </Link>
@@ -128,31 +115,31 @@ export default async function Home() {
           )}
         </section>
 
-        <section className="rounded border border-gray-200 p-4">
-          <h2 className="text-sm font-semibold text-gray-500">이번 달 통계</h2>
+        <section className="rounded-card border border-hairline p-6">
+          <h2 className="text-base font-semibold text-ink">이번 달 통계</h2>
           <div className="mt-4 flex h-20 items-end gap-3">
             {thisMonthWeekStats.map((week, index) => (
               <div
                 key={week.weekStart}
-                className="flex h-full flex-1 flex-col items-center justify-end gap-1"
+                className="flex h-full flex-1 flex-col items-center justify-end gap-1.5"
               >
-                <div className="flex h-full w-full items-end">
+                <div className="flex h-full w-full items-end rounded-t bg-surface-strong">
                   <div
-                    className={`w-full rounded-t ${WEEK_BAR_COLORS[index % WEEK_BAR_COLORS.length]}`}
+                    className="w-full rounded-t bg-primary"
                     style={{ height: `${week.progress ?? 0}%` }}
                     title={`${index + 1}째 주 · ${
                       week.progress === null ? '할 일 없음' : `${week.progress}%`
                     }`}
                   />
                 </div>
-                <span className="text-[10px] text-gray-500">{index + 1}주</span>
+                <span className="text-[12px] text-muted">{index + 1}주</span>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="rounded border border-gray-200 p-4">
-          <Link href="/stats" className="text-sm font-semibold text-gray-500 hover:underline">
+        <section className="rounded-card border border-hairline p-6">
+          <Link href="/stats" className="text-base font-semibold text-ink hover:underline">
             통계 보기 →
           </Link>
         </section>

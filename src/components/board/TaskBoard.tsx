@@ -197,28 +197,30 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between gap-4">
-        <ProgressBar progress={progress} />
+        <div className="flex-1">
+          <ProgressBar progress={progress} />
+        </div>
         {notifPermission === 'default' && (
           <button
             type="button"
             onClick={enableNotifications}
-            className="whitespace-nowrap rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+            className="whitespace-nowrap rounded-btn border border-hairline px-2 py-1 text-xs text-muted hover:bg-surface-soft"
           >
             마감 알림 켜기
           </button>
         )}
         {notifPermission === 'denied' && (
-          <span className="whitespace-nowrap text-xs text-gray-400">알림이 차단되어 있습니다</span>
+          <span className="whitespace-nowrap text-xs text-muted-soft">알림이 차단되어 있습니다</span>
         )}
       </div>
 
       {error && (
-        <div className="mt-4 flex items-center justify-between rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mt-4 flex items-center justify-between rounded-btn border border-[#f0c9c0] bg-[#fdecec] px-3 py-2 text-sm text-error">
           <span>{error}</span>
           <button
             type="button"
             onClick={() => setError(null)}
-            className="ml-4 text-red-500 hover:text-red-700"
+            className="ml-4 text-error hover:text-error"
             aria-label="닫기"
           >
             ✕
@@ -233,19 +235,19 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
           onChange={(e) => setNewTitle(e.target.value)}
           placeholder="새 할 일 제목"
           aria-label="새 할 일 제목"
-          className="min-w-[10rem] flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm"
+          className="min-w-[10rem] flex-1 rounded-btn border border-hairline px-2 py-1.5 text-sm"
         />
         <input
           type="date"
           value={newDueDate}
           onChange={(e) => setNewDueDate(e.target.value)}
           aria-label="기한"
-          className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+          className="rounded-btn border border-hairline px-2 py-1.5 text-sm"
         />
         <button
           type="submit"
           disabled={adding || !newTitle.trim()}
-          className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50"
+          className="rounded-btn bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary-active disabled:opacity-50"
         >
           추가
         </button>
@@ -283,17 +285,17 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
 
 function ProgressBar({ progress }: { progress: number | null }) {
   if (progress === null) {
-    return <p className="text-sm text-gray-400">할 일 없음</p>;
+    return <p className="text-sm text-muted-soft">할 일 없음</p>;
   }
   return (
     <div>
-      <div className="flex items-center justify-between text-sm text-gray-600">
+      <div className="flex items-center justify-between text-sm text-muted">
         <span>진행률</span>
         <span>{progress}%</span>
       </div>
-      <div className="mt-1 h-2 w-full rounded bg-gray-200">
+      <div className="mt-1 h-1.5 w-full rounded-full bg-surface-strong">
         <div
-          className="h-2 rounded bg-blue-500 transition-all"
+          className="h-1.5 rounded-full bg-primary transition-all"
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -328,7 +330,7 @@ function DailyView({
 
   return (
     <div className="mt-8">
-      <h2 className="text-sm font-semibold text-gray-500">날짜별 보기</h2>
+      <h2 className="text-sm font-semibold text-muted">날짜별 보기</h2>
       <div className="mt-3 flex flex-col gap-2">
         {weekDates.map((date) => (
           <DayRow
@@ -340,8 +342,8 @@ function DailyView({
           />
         ))}
         {byDate.unscheduled.length > 0 && (
-          <div className="rounded border border-dashed border-gray-300 p-3">
-            <p className="text-sm font-medium text-gray-500">날짜 미정</p>
+          <div className="rounded-btn border border-dashed border-hairline p-3">
+            <p className="text-sm font-medium text-muted">날짜 미정</p>
             <DayTaskList tasks={byDate.unscheduled} onChangeStatus={onChangeStatus} />
           </div>
         )}
@@ -364,13 +366,13 @@ function DayRow({
   const weekday = getWeekdayLabel(date);
 
   return (
-    <div className={`rounded border p-3 ${isToday ? 'border-black' : 'border-gray-200'}`}>
-      <p className="text-sm font-medium text-gray-700">
+    <div className={`rounded-card border p-3 ${isToday ? 'border-ink' : 'border-hairline'}`}>
+      <p className="text-sm font-medium text-body">
         {date} ({weekday})
-        {isToday && <span className="ml-1.5 text-xs font-normal text-blue-600">오늘</span>}
+        {isToday && <span className="ml-1.5 text-xs font-normal text-ink">오늘</span>}
       </p>
       {tasks.length === 0 ? (
-        <p className="mt-1 text-xs text-gray-400">할 일 없음</p>
+        <p className="mt-1 text-xs text-muted-soft">할 일 없음</p>
       ) : (
         <DayTaskList tasks={tasks} onChangeStatus={onChangeStatus} />
       )}
@@ -394,11 +396,11 @@ function DayTaskList({
             checked={task.status === 'done'}
             onChange={(e) => onChangeStatus(task._id, e.target.checked ? 'done' : 'todo')}
             aria-label={`${task.title} 완료 여부`}
-            className="h-4 w-4 shrink-0 rounded border-gray-300"
+            className="h-4 w-4 shrink-0 rounded-btn border-hairline"
           />
           <span
             className={`text-sm ${
-              task.status === 'done' ? 'text-gray-400 line-through' : 'text-gray-800'
+              task.status === 'done' ? 'text-muted-soft line-through' : 'text-ink'
             }`}
           >
             {task.title}
@@ -429,11 +431,11 @@ function Column({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded border p-3 ${
-        isOver ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50'
+      className={`rounded-card border p-3 transition-colors ${
+        isOver ? 'border-primary bg-[#fff0f3]' : 'border-hairline bg-surface-soft'
       }`}
     >
-      <h2 className="mb-3 text-sm font-semibold text-gray-700">
+      <h2 className="mb-3 text-sm font-semibold text-ink">
         {label} ({tasks.length})
       </h2>
       <SortableContext
@@ -482,15 +484,15 @@ function TaskCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="rounded border border-gray-200 bg-white p-2 shadow-sm"
+      className="rounded-card border border-hairline bg-canvas p-2 transition-shadow hover:shadow-float"
     >
       <div {...attributes} {...listeners} className="cursor-grab touch-none">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-medium text-gray-800">{task.title}</p>
+          <p className="text-sm font-medium text-ink">{task.title}</p>
           {dueBadge && (
             <span
-              className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                dueBadge === '지연' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+              className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                dueBadge === '지연' ? 'bg-[#fdecec] text-error' : 'bg-amber-100 text-amber-700'
               }`}
             >
               {dueBadge}
@@ -498,14 +500,14 @@ function TaskCard({
           )}
         </div>
         {task.description && (
-          <p className="mt-1 text-xs text-gray-500">{task.description}</p>
+          <p className="mt-1 text-xs text-muted">{task.description}</p>
         )}
       </div>
       <div className="mt-2 flex items-center gap-1">
         <select
           value={task.status}
           onChange={(e) => onChangeStatus(task._id, e.target.value as TaskStatus)}
-          className="w-full rounded border border-gray-300 px-1 py-1 text-xs"
+          className="w-full rounded-btn border border-hairline px-1 py-1 text-xs"
           aria-label="상태 변경"
         >
           {COLUMNS.map((col) => (
@@ -517,7 +519,7 @@ function TaskCard({
         <button
           type="button"
           onClick={() => onDelete(task._id)}
-          className="shrink-0 rounded px-1.5 py-1 text-xs text-gray-400 hover:bg-red-50 hover:text-red-600"
+          className="shrink-0 rounded-btn px-1.5 py-1 text-xs text-muted-soft hover:bg-[#fdecec] hover:text-error"
           aria-label="할 일 삭제"
           title="삭제"
         >

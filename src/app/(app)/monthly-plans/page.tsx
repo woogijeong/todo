@@ -23,7 +23,7 @@ export default async function MonthlyPlansPage() {
       <MonthlyPlanCreateToggle goals={goals} existingMonths={plans.map((plan) => plan.month)} />
 
       {plans.length === 0 ? (
-        <p className="mt-8 text-gray-500">등록된 월간 계획이 없습니다.</p>
+        <p className="mt-8 text-muted">등록된 월간 계획이 없습니다.</p>
       ) : (
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
           {plans.map((plan, index) => {
@@ -32,22 +32,22 @@ export default async function MonthlyPlansPage() {
               <Link
                 key={plan._id}
                 href={`/monthly-plans/${plan._id}`}
-                className="rounded-lg border border-gray-200 p-4 transition-colors hover:border-gray-400 hover:shadow-sm"
+                className="rounded-card border border-hairline p-4 transition-colors hover:border-border-strong hover:shadow-float"
               >
-                <p className="font-medium text-gray-900">{plan.title}</p>
-                <p className="mt-1 text-sm text-gray-500">{monthLabel(plan.month)}</p>
+                <p className="font-medium text-ink">{plan.title}</p>
+                <p className="mt-1 text-sm text-muted">{monthLabel(plan.month)}</p>
                 <div className="mt-3">
                   {progress === null ? (
-                    <p className="text-xs text-gray-400">할 일 없음</p>
+                    <p className="text-xs text-muted-soft">할 일 없음</p>
                   ) : (
                     <>
-                      <div className="h-1.5 w-full rounded-full bg-gray-200">
+                      <div className="h-1.5 w-full rounded-full bg-surface-strong">
                         <div
-                          className="h-1.5 rounded-full bg-blue-500"
+                          className="h-1.5 rounded-full bg-primary"
                           style={{ width: `${progress}%` }}
                         />
                       </div>
-                      <p className="mt-1 text-xs text-gray-500">{progress}%</p>
+                      <p className="mt-1 text-xs text-muted">{progress}%</p>
                     </>
                   )}
                 </div>

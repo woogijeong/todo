@@ -33,7 +33,7 @@ function monthLabel(monthCursor: string): string {
 
 function BackLink({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="mb-4 text-sm text-blue-600 hover:underline">
+    <button type="button" onClick={onClick} className="mb-4 text-sm text-ink hover:underline">
       ‹ {label}
     </button>
   );
@@ -67,7 +67,7 @@ export default function WeeklyPlanExplorer({ plans }: { plans: PlanSummary[] }) 
     return (
       <div className="mt-8">
         <BackLink label={monthLabel(monthCursor)} onClick={() => setSelectedWeekStart(null)} />
-        <h2 className="text-sm font-semibold text-gray-500">
+        <h2 className="text-sm font-semibold text-muted">
           {plan?.title ?? '새 주간 계획'} · {selectedWeekStart} ~ {addDays(selectedWeekStart, 6)}
         </h2>
         <div className="mt-3 grid grid-cols-7 gap-2">
@@ -76,17 +76,17 @@ export default function WeeklyPlanExplorer({ plans }: { plans: PlanSummary[] }) 
               key={date}
               type="button"
               onClick={() => setSelectedDate(date)}
-              className={`rounded-lg border p-3 text-center transition-colors hover:border-gray-400 hover:shadow-sm ${
-                date === todayStr ? 'border-black' : 'border-gray-200'
+              className={`rounded-card border p-3 text-center transition-colors hover:border-border-strong hover:shadow-float ${
+                date === todayStr ? 'border-ink' : 'border-hairline'
               }`}
             >
-              <p className="text-xs text-gray-500">{getWeekdayLabel(date)}</p>
+              <p className="text-xs text-muted">{getWeekdayLabel(date)}</p>
               <p className="mt-1 text-lg font-medium">{Number(date.slice(8, 10))}</p>
             </button>
           ))}
         </div>
         {plan && (
-          <Link href={`/plans/${plan._id}`} className="mt-4 inline-block text-sm text-blue-600 hover:underline">
+          <Link href={`/plans/${plan._id}`} className="mt-4 inline-block text-sm text-ink hover:underline">
             이 주 전체 보드 보기 →
           </Link>
         )}
@@ -101,16 +101,16 @@ export default function WeeklyPlanExplorer({ plans }: { plans: PlanSummary[] }) 
           type="button"
           onClick={() => setMonthCursor((m) => shiftMonth(m, -1))}
           aria-label="이전 달"
-          className="rounded px-3 py-1 text-lg text-gray-500 hover:bg-gray-100"
+          className="rounded-btn px-3 py-1 text-lg text-muted hover:bg-surface-soft"
         >
           ‹
         </button>
-        <p className="text-lg font-semibold">{monthLabel(monthCursor)}</p>
+        <p className="text-lg font-semibold text-ink">{monthLabel(monthCursor)}</p>
         <button
           type="button"
           onClick={() => setMonthCursor((m) => shiftMonth(m, 1))}
           aria-label="다음 달"
-          className="rounded px-3 py-1 text-lg text-gray-500 hover:bg-gray-100"
+          className="rounded-btn px-3 py-1 text-lg text-muted hover:bg-surface-soft"
         >
           ›
         </button>
@@ -125,21 +125,21 @@ export default function WeeklyPlanExplorer({ plans }: { plans: PlanSummary[] }) 
               key={weekStart}
               type="button"
               onClick={() => setSelectedWeekStart(weekStart)}
-              className="rounded-lg border border-gray-200 p-4 text-left transition-colors hover:border-gray-400 hover:shadow-sm"
+              className="rounded-card border border-hairline p-4 text-left transition-colors hover:border-border-strong hover:shadow-float"
             >
-              <p className="text-xs font-medium text-gray-400">{index + 1}째 주</p>
-              <p className="mt-0.5 font-medium text-gray-900">{plan?.title ?? `${index + 1}째 주`}</p>
-              <p className="mt-0.5 text-sm text-gray-500">
+              <p className="text-xs font-medium text-muted-soft">{index + 1}째 주</p>
+              <p className="mt-0.5 font-medium text-ink">{plan?.title ?? `${index + 1}째 주`}</p>
+              <p className="mt-0.5 text-sm text-muted">
                 {weekStart} ~ {weekEnd}
               </p>
               {plan && (
                 <div className="mt-2">
                   {plan.progress === null ? (
-                    <p className="text-xs text-gray-400">할 일 없음</p>
+                    <p className="text-xs text-muted-soft">할 일 없음</p>
                   ) : (
-                    <div className="h-1.5 w-full rounded-full bg-gray-200">
+                    <div className="h-1.5 w-full rounded-full bg-surface-strong">
                       <div
-                        className="h-1.5 rounded-full bg-blue-500"
+                        className="h-1.5 rounded-full bg-primary"
                         style={{ width: `${plan.progress}%` }}
                       />
                     </div>
@@ -233,7 +233,7 @@ function DayPanel({
   return (
     <div className="mt-8">
       <BackLink label={`${weekStart} ~ ${addDays(weekStart, 6)}`} onClick={onBack} />
-      <h2 className="text-sm font-semibold text-gray-500">
+      <h2 className="text-sm font-semibold text-muted">
         {date} ({getWeekdayLabel(date)})
       </h2>
 
@@ -244,24 +244,24 @@ function DayPanel({
           onChange={(e) => setTitle(e.target.value)}
           placeholder="새 할 일 제목"
           aria-label="새 할 일 제목"
-          className="flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm"
+          className="flex-1 rounded-btn border border-hairline px-2 py-1.5 text-sm"
         />
         <button
           type="submit"
           disabled={pending || !title.trim()}
-          className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50"
+          className="rounded-btn bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary-active disabled:opacity-50"
         >
           추가
         </button>
       </form>
 
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-error">{error}</p>}
 
       <div className="mt-4">
         {loading ? (
-          <p className="text-sm text-gray-400">불러오는 중…</p>
+          <p className="text-sm text-muted-soft">불러오는 중…</p>
         ) : tasks.length === 0 ? (
-          <p className="text-sm text-gray-400">할 일 없음</p>
+          <p className="text-sm text-muted-soft">할 일 없음</p>
         ) : (
           <ul className="flex flex-col gap-1.5">
             {tasks.map((task) => (
@@ -271,11 +271,11 @@ function DayPanel({
                   checked={task.status === 'done'}
                   onChange={(e) => toggle(task._id, e.target.checked)}
                   aria-label={`${task.title} 완료 여부`}
-                  className="h-4 w-4 shrink-0 rounded border-gray-300"
+                  className="h-4 w-4 shrink-0 rounded-btn border-hairline"
                 />
                 <span
                   className={`text-sm ${
-                    task.status === 'done' ? 'text-gray-400 line-through' : 'text-gray-800'
+                    task.status === 'done' ? 'text-muted-soft line-through' : 'text-ink'
                   }`}
                 >
                   {task.title}
@@ -289,7 +289,7 @@ function DayPanel({
       {resolvedPlanId && (
         <Link
           href={`/plans/${resolvedPlanId}`}
-          className="mt-4 inline-block text-sm text-blue-600 hover:underline"
+          className="mt-4 inline-block text-sm text-ink hover:underline"
         >
           이번 주 전체 보드 보기 →
         </Link>

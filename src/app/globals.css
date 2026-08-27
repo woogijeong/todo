@@ -1,26 +1,57 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Airbnb-style design tokens (see the design brief in docs).
+ * Pure-white canvas, near-black ink, a single voltage of Rausch, soft
+ * rounded shapes, one shadow tier. No dark mode on the public web.
+ */
+@theme {
+  /* Brand & accent — Rausch is the only brand color */
+  --color-primary: #ff385c;
+  --color-primary-active: #e00b41;
+  --color-primary-disabled: #ffd1da;
+  --color-on-primary: #ffffff;
+  --color-error: #c13515;
+
+  /* Surfaces */
+  --color-canvas: #ffffff;
+  --color-surface-soft: #f7f7f7;
+  --color-surface-strong: #f2f2f2;
+
+  /* Hairlines & borders */
+  --color-hairline: #dddddd;
+  --color-hairline-soft: #ebebeb;
+  --color-border-strong: #c1c1c1;
+
+  /* Text — never pure black */
+  --color-ink: #222222;
+  --color-body: #3f3f3f;
+  --color-muted: #6a6a6a;
+  --color-muted-soft: #929292;
+
+  /* Soft shape language: 8px buttons, ~14px cards, 32px strips, pills/circles full */
+  --radius-btn: 8px;
+  --radius-card: 14px;
+  --radius-strip: 32px;
+
+  /* The single elevation tier in the whole system */
+  --shadow-float:
+    rgba(0, 0, 0, 0.02) 0 0 0 1px,
+    rgba(0, 0, 0, 0.04) 0 2px 6px 0,
+    rgba(0, 0, 0, 0.1) 0 4px 8px 0;
+
+  /* Airbnb Cereal VF is proprietary — Inter is the closest open substitute */
+  --font-sans: var(--font-inter), "Circular", -apple-system, system-ui,
+    "Helvetica Neue", Roboto, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }

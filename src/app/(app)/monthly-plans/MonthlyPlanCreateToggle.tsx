@@ -57,7 +57,7 @@ export default function MonthlyPlanCreateToggle({ goals, existingMonths }: Props
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">월간 계획</h1>
+        <h1 className="text-2xl font-semibold text-ink">월간 계획</h1>
         <button
           type="button"
           onClick={() => {
@@ -66,7 +66,7 @@ export default function MonthlyPlanCreateToggle({ goals, existingMonths }: Props
           }}
           aria-expanded={open}
           aria-label={open ? '계획 추가 폼 닫기' : '새 월간 계획 추가'}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-xl leading-none text-white hover:bg-gray-800"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xl leading-none text-on-primary transition-colors hover:bg-primary-active"
         >
           {open ? '×' : '+'}
         </button>
@@ -75,27 +75,27 @@ export default function MonthlyPlanCreateToggle({ goals, existingMonths }: Props
       {open && (
         <form
           onSubmit={handleSubmit}
-          className="mt-4 flex flex-col gap-3 rounded border border-gray-200 p-4"
+          className="mt-4 flex flex-col gap-3 rounded-card border border-hairline p-4"
         >
           <input
             type="text"
             name="title"
             placeholder="제목"
             required
-            className="rounded border px-3 py-2"
+            className="rounded-btn border border-hairline px-3 py-2.5 text-sm"
           />
           <input
             type="month"
             name="month"
-            className="rounded border px-3 py-2"
+            className="rounded-btn border border-hairline px-3 py-2.5 text-sm"
             aria-label="해당 월 (비워두면 이번 달)"
           />
           <div>
-            <p className="mb-1 text-sm text-gray-600">연결할 연간 계획 (선택)</p>
+            <p className="mb-1 text-sm text-muted">연결할 연간 계획 (선택)</p>
             {goals.length === 0 ? (
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-muted-soft">
                 등록된 연간 계획이 없습니다.{' '}
-                <Link href="/goals" className="text-blue-600 hover:underline">
+                <Link href="/goals" className="text-ink hover:underline">
                   새로 만들기
                 </Link>
               </p>
@@ -103,11 +103,11 @@ export default function MonthlyPlanCreateToggle({ goals, existingMonths }: Props
               <YearlyGoalSlider goals={goals} name="yearlyGoalId" />
             )}
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-error">{error}</p>}
           <button
             type="submit"
             disabled={pending}
-            className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+            className="rounded-btn bg-primary px-5 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-active disabled:opacity-50"
           >
             {pending ? '생성 중…' : '계획 생성'}
           </button>

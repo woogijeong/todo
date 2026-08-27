@@ -26,10 +26,10 @@ export default function YearlyGoalSlider({ goals, name = 'yearlyGoalId' }: Props
           role="radio"
           aria-checked={selected === NONE_ID}
           onClick={() => setSelected(NONE_ID)}
-          className={`shrink-0 snap-start rounded-lg border px-4 py-3 text-left transition-colors ${
+          className={`shrink-0 snap-start rounded-card border px-4 py-3 text-left transition-colors ${
             selected === NONE_ID
-              ? 'border-black bg-black text-white'
-              : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+              ? 'border-ink bg-ink text-white'
+              : 'border-hairline text-muted hover:bg-surface-soft'
           }`}
         >
           <p className="text-sm font-medium">없음</p>
@@ -44,14 +44,14 @@ export default function YearlyGoalSlider({ goals, name = 'yearlyGoalId' }: Props
               role="radio"
               aria-checked={isSelected}
               onClick={() => setSelected(goal._id)}
-              className={`shrink-0 snap-start rounded-lg border px-4 py-3 text-left transition-colors ${
+              className={`shrink-0 snap-start rounded-card border px-4 py-3 text-left transition-colors ${
                 isSelected
-                  ? 'border-black bg-black text-white'
-                  : 'border-gray-200 hover:bg-gray-50'
+                  ? 'border-ink bg-ink text-white'
+                  : 'border-hairline hover:bg-surface-soft'
               }`}
             >
               <p className="max-w-40 truncate text-sm font-medium">{goal.title}</p>
-              <p className={`text-xs ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
+              <p className={`text-xs ${isSelected ? 'text-white/70' : 'text-muted'}`}>
                 {goal.year}
               </p>
             </button>

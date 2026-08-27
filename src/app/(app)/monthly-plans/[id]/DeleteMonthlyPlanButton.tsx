@@ -39,11 +39,11 @@ export default function DeleteMonthlyPlanButton({ monthlyPlanId, childWeeklyPlan
         type="button"
         onClick={handleDelete}
         disabled={pending}
-        className="whitespace-nowrap rounded border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+        className="whitespace-nowrap rounded-btn border border-[#f0c9c0] px-3 py-1.5 text-sm font-medium text-error hover:bg-[#fdecec] disabled:opacity-50"
       >
         계획 삭제
       </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && <span className="text-xs text-error">{error}</span>}
     </div>
   );
 }

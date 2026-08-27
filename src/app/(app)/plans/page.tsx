@@ -13,7 +13,7 @@ export default async function PlansPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <h1 className="text-2xl font-semibold">주간 계획</h1>
+      <h1 className="text-2xl font-semibold text-ink">주간 계획</h1>
       <WeeklyPlanExplorer
         plans={plans.map((plan, index) => ({
           _id: plan._id,

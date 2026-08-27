@@ -31,14 +31,14 @@ export default async function PlanPage({
 
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <Link href="/plans" className="mb-4 inline-block text-sm text-blue-600 hover:underline">
+      <Link href="/plans" className="mb-4 inline-block text-sm text-ink hover:underline">
         ‹ 주간 계획
       </Link>
 
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">{plan.title}</h1>
-          <p className="mt-2 text-gray-600">
+          <h1 className="text-2xl font-semibold text-ink">{plan.title}</h1>
+          <p className="mt-2 text-muted">
             {plan.weekStart} – {plan.weekEnd}
           </p>
         </div>
@@ -46,7 +46,7 @@ export default async function PlanPage({
           <form action={goToNextWeek}>
             <button
               type="submit"
-              className="whitespace-nowrap rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-50"
+              className="whitespace-nowrap rounded-btn border border-ink px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-soft"
             >
               다음 주 계획 만들기
             </button>

@@ -49,16 +49,16 @@ export default function WeekChecklist({ initialTasks }: Props) {
   return (
     <div className="mt-2">
       {progress === null ? (
-        <p className="text-sm text-gray-400">할 일 없음</p>
+        <p className="text-sm text-muted-soft">할 일 없음</p>
       ) : (
         <div>
-          <div className="h-2 w-full rounded-full bg-gray-200">
+          <div className="h-2 w-full rounded-full bg-surface-strong">
             <div
-              className="h-2 rounded-full bg-blue-500 transition-all"
+              className="h-2 rounded-full bg-primary transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className="mt-1 text-sm text-gray-600">{progress}%</p>
+          <p className="mt-1 text-sm text-muted">{progress}%</p>
         </div>
       )}
 
@@ -71,11 +71,11 @@ export default function WeekChecklist({ initialTasks }: Props) {
                 checked={task.status === 'done'}
                 onChange={(e) => toggle(task._id, e.target.checked)}
                 aria-label={`${task.title} 완료 여부`}
-                className="h-4 w-4 shrink-0 rounded border-gray-300"
+                className="h-4 w-4 shrink-0 rounded-btn border-hairline"
               />
               <span
                 className={`text-sm ${
-                  task.status === 'done' ? 'text-gray-400 line-through' : 'text-gray-800'
+                  task.status === 'done' ? 'text-muted-soft line-through' : 'text-ink'
                 }`}
               >
                 {task.title}
@@ -85,7 +85,7 @@ export default function WeekChecklist({ initialTasks }: Props) {
         </ul>
       )}
 
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-xs text-error">{error}</p>}
     </div>
   );
 }
