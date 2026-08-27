@@ -11,6 +11,7 @@ import {
   getOAuthConfig,
   OAuthConfigError,
   OAuthExchangeError,
+  resolveRedirectUri,
 } from '@/lib/github-oauth';
 import { createSession, upsertGithubUser } from '@/lib/auth';
 
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
 
   let profile;
   try {
-    const accessToken = await exchangeCodeForToken(config, code);
+    const accessToken = await exchangeCodeForToken(config, code, resolveRedirectUri(request));
     profile = await fetchGithubProfile(accessToken);
   } catch (error) {
     if (error instanceof OAuthExchangeError) {

@@ -8,12 +8,14 @@
 
 1. https://github.com/settings/developers → **OAuth Apps** → **New OAuth App**
 2. 값 입력:
-   - **Application name**: 아무 이름 (예: `todo-app-local`)
+   - **Application name**: 아무 이름 (예: `todo-app`)
    - **Homepage URL**: `http://localhost:3000`
    - **Authorization callback URL**: `http://localhost:3000/auth/github/callback`
-     - 배포 환경에서는 `https://<도메인>/auth/github/callback` 로 별도 App을 만들거나
-       콜백 URL을 추가한다.
-3. 생성 후 **Client ID** 확인, **Generate a new client secret** 로 secret 발급.
+3. 생성 후 **Add another URL** 로 배포 도메인 콜백도 추가한다. 하나의 OAuth App에
+   여러 콜백 URL을 등록할 수 있으므로 로컬/프로덕션에 별도 App이 필요 없다:
+   - `http://localhost:3000/auth/github/callback`
+   - `https://<배포도메인>/auth/github/callback`  (예: `https://todo-ten-alpha-44.vercel.app/auth/github/callback`)
+4. **Client ID** 확인, **Generate a new client secret** 로 secret 발급.
 
 ## 2. 환경변수 설정
 
@@ -22,13 +24,17 @@
 ```
 GITHUB_CLIENT_ID=<Client ID>
 GITHUB_CLIENT_SECRET=<Client secret>       # 절대 커밋하지 말 것
-GITHUB_OAUTH_REDIRECT_URI=http://localhost:3000/auth/github/callback
 ```
 
-- `GITHUB_OAUTH_REDIRECT_URI` 는 OAuth App의 Authorization callback URL과
-  **정확히 일치**해야 한다.
-- 세 값 중 하나라도 없으면 `/auth/github` 접근 시 500과 함께 어떤 변수가
-  비었는지 알려주는 메시지가 나온다 (앱이 크래시하지 않음).
+- **콜백 URL은 요청 origin에서 자동으로 유도된다** (`http://localhost:3000` 은
+  `http://localhost:3000/auth/github/callback`, 배포 도메인은 그 도메인의 콜백).
+  따라서 로컬과 배포가 같은 OAuth App / 같은 `.env` 로 동작한다. 1번에서 등록한
+  콜백 URL 목록에 사용하는 origin이 모두 들어있기만 하면 된다.
+- `GITHUB_OAUTH_REDIRECT_URI` 는 선택 사항이다. 설정하면 그 값으로 **고정**되므로
+  (예: origin을 가리는 프록시 뒤) 특수한 경우에만 쓴다. 배포 환경(Vercel 등)에서
+  이 변수가 설정돼 있으면 제거해야 자동 유도가 동작한다.
+- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` 중 하나라도 없으면 `/auth/github`
+  접근 시 500과 함께 어떤 변수가 비었는지 알려준다 (앱이 크래시하지 않음).
 
 ## 3. 로그인 흐름
 

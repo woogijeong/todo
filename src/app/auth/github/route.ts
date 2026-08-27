@@ -5,7 +5,12 @@ import {
   OAUTH_STATE_COOKIE_NAME,
   safeNextPath,
 } from '@/lib/session-cookie';
-import { buildAuthorizeUrl, getOAuthConfig, OAuthConfigError } from '@/lib/github-oauth';
+import {
+  buildAuthorizeUrl,
+  getOAuthConfig,
+  OAuthConfigError,
+  resolveRedirectUri,
+} from '@/lib/github-oauth';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,8 +27,9 @@ export async function GET(request: NextRequest) {
 
   const state = randomBytes(16).toString('hex');
   const next = safeNextPath(request.nextUrl.searchParams.get('next'));
+  const redirectUri = resolveRedirectUri(request);
 
-  const response = NextResponse.redirect(buildAuthorizeUrl(config, state));
+  const response = NextResponse.redirect(buildAuthorizeUrl(config, state, redirectUri));
 
   const cookieOptions = {
     httpOnly: true,

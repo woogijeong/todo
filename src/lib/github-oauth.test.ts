@@ -6,13 +6,11 @@ import {
   getOAuthConfig,
   OAuthConfigError,
   OAuthExchangeError,
+  resolveRedirectUri,
 } from './github-oauth';
 
-const config = {
-  clientId: 'cid',
-  clientSecret: 'secret',
-  redirectUri: 'http://localhost:3000/auth/github/callback',
-};
+const config = { clientId: 'cid', clientSecret: 'secret' };
+const CB = 'http://localhost:3000/auth/github/callback';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -23,7 +21,6 @@ describe('getOAuthConfig', () => {
   it('throws OAuthConfigError naming every missing var', () => {
     vi.stubEnv('GITHUB_CLIENT_ID', '');
     vi.stubEnv('GITHUB_CLIENT_SECRET', '');
-    vi.stubEnv('GITHUB_OAUTH_REDIRECT_URI', '');
     try {
       getOAuthConfig();
       expect.unreachable();
@@ -31,28 +28,44 @@ describe('getOAuthConfig', () => {
       expect(e).toBeInstanceOf(OAuthConfigError);
       expect((e as Error).message).toContain('GITHUB_CLIENT_ID');
       expect((e as Error).message).toContain('GITHUB_CLIENT_SECRET');
-      expect((e as Error).message).toContain('GITHUB_OAUTH_REDIRECT_URI');
     }
   });
 
-  it('returns the three values when all are set', () => {
+  it('returns client id + secret when both are set', () => {
     vi.stubEnv('GITHUB_CLIENT_ID', 'cid');
     vi.stubEnv('GITHUB_CLIENT_SECRET', 'secret');
-    vi.stubEnv('GITHUB_OAUTH_REDIRECT_URI', 'http://x/cb');
-    expect(getOAuthConfig()).toEqual({
-      clientId: 'cid',
-      clientSecret: 'secret',
-      redirectUri: 'http://x/cb',
+    expect(getOAuthConfig()).toEqual({ clientId: 'cid', clientSecret: 'secret' });
+  });
+});
+
+describe('resolveRedirectUri', () => {
+  it('derives <origin>/auth/github/callback from the request', () => {
+    vi.stubEnv('GITHUB_OAUTH_REDIRECT_URI', '');
+    const req = new Request('http://localhost:3000/auth/github?next=/goals');
+    expect(resolveRedirectUri(req)).toBe('http://localhost:3000/auth/github/callback');
+  });
+
+  it('honours x-forwarded-host / -proto behind a proxy', () => {
+    vi.stubEnv('GITHUB_OAUTH_REDIRECT_URI', '');
+    const req = new Request('http://internal.local/auth/github', {
+      headers: { 'x-forwarded-host': 'todo.example.app', 'x-forwarded-proto': 'https' },
     });
+    expect(resolveRedirectUri(req)).toBe('https://todo.example.app/auth/github/callback');
+  });
+
+  it('uses GITHUB_OAUTH_REDIRECT_URI as an explicit override when set', () => {
+    vi.stubEnv('GITHUB_OAUTH_REDIRECT_URI', 'https://forced.example/cb');
+    const req = new Request('http://localhost:3000/auth/github');
+    expect(resolveRedirectUri(req)).toBe('https://forced.example/cb');
   });
 });
 
 describe('buildAuthorizeUrl', () => {
   it('targets github.com with client_id, redirect_uri, read:user scope and state', () => {
-    const url = new URL(buildAuthorizeUrl(config, 'st4te'));
+    const url = new URL(buildAuthorizeUrl(config, 'st4te', CB));
     expect(url.origin + url.pathname).toBe('https://github.com/login/oauth/authorize');
     expect(url.searchParams.get('client_id')).toBe('cid');
-    expect(url.searchParams.get('redirect_uri')).toBe(config.redirectUri);
+    expect(url.searchParams.get('redirect_uri')).toBe(CB);
     expect(url.searchParams.get('scope')).toBe('read:user');
     expect(url.searchParams.get('state')).toBe('st4te');
   });
@@ -70,7 +83,7 @@ describe('exchangeCodeForToken', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const token = await exchangeCodeForToken(config, 'the-code');
+    const token = await exchangeCodeForToken(config, 'the-code', CB);
     expect(token).toBe('gho_abc');
 
     const [calledUrl, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
@@ -79,6 +92,7 @@ describe('exchangeCodeForToken', () => {
       client_id: 'cid',
       client_secret: 'secret',
       code: 'the-code',
+      redirect_uri: CB,
     });
   });
 
@@ -87,12 +101,12 @@ describe('exchangeCodeForToken', () => {
       JSON.stringify({ error: 'bad_verification_code', error_description: 'expired' }),
       { status: 200 }
     )));
-    await expect(exchangeCodeForToken(config, 'x')).rejects.toBeInstanceOf(OAuthExchangeError);
+    await expect(exchangeCodeForToken(config, 'x', CB)).rejects.toBeInstanceOf(OAuthExchangeError);
   });
 
   it('throws OAuthExchangeError on a non-2xx response', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 500 })));
-    await expect(exchangeCodeForToken(config, 'x')).rejects.toBeInstanceOf(OAuthExchangeError);
+    await expect(exchangeCodeForToken(config, 'x', CB)).rejects.toBeInstanceOf(OAuthExchangeError);
   });
 });
 

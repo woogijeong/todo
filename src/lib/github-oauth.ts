@@ -31,21 +31,19 @@ export class OAuthExchangeError extends Error {
 export type GithubOAuthConfig = {
   clientId: string;
   clientSecret: string;
-  redirectUri: string;
 };
 
-/** Reads + validates the three required env vars, throwing a clear
+/** Reads + validates the two required env vars, throwing a clear
  *  `OAuthConfigError` (not a generic crash) when the app hasn't been
- *  configured yet. See docs/GITHUB_OAUTH_SETUP.md. */
+ *  configured yet. The callback URL is resolved per-request by
+ *  `resolveRedirectUri`, not from env. See docs/GITHUB_OAUTH_SETUP.md. */
 export function getOAuthConfig(): GithubOAuthConfig {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-  const redirectUri = process.env.GITHUB_OAUTH_REDIRECT_URI;
 
   const missing = [
     !clientId && 'GITHUB_CLIENT_ID',
     !clientSecret && 'GITHUB_CLIENT_SECRET',
-    !redirectUri && 'GITHUB_OAUTH_REDIRECT_URI',
   ].filter(Boolean);
 
   if (missing.length > 0) {
@@ -54,19 +52,39 @@ export function getOAuthConfig(): GithubOAuthConfig {
     );
   }
 
-  return {
-    clientId: clientId as string,
-    clientSecret: clientSecret as string,
-    redirectUri: redirectUri as string,
-  };
+  return { clientId: clientId as string, clientSecret: clientSecret as string };
+}
+
+/**
+ * The OAuth callback URL for this request. Prefers an explicit
+ * `GITHUB_OAUTH_REDIRECT_URI` (for when the app sits behind a proxy that
+ * obscures its own origin); otherwise derives `<origin>/auth/github/callback`
+ * from the request, so `http://localhost:3000` and every deployed domain
+ * each get their own matching callback with no extra config. Every such
+ * origin must be added to the GitHub OAuth App's callback URLs (it accepts
+ * several). Takes a standard web `Request`, so it stays framework-agnostic.
+ */
+export function resolveRedirectUri(request: Request): string {
+  const override = process.env.GITHUB_OAUTH_REDIRECT_URI?.trim();
+  if (override) return override;
+
+  const url = new URL(request.url);
+  const proto = request.headers.get('x-forwarded-proto') ?? url.protocol.replace(/:$/, '');
+  const host =
+    request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? url.host;
+  return `${proto}://${host}/auth/github/callback`;
 }
 
 /** Builds the URL to send the browser to. `scope` is `read:user` only — the
  *  app just needs the public profile (login + avatar). */
-export function buildAuthorizeUrl(config: GithubOAuthConfig, state: string): string {
+export function buildAuthorizeUrl(
+  config: GithubOAuthConfig,
+  state: string,
+  redirectUri: string
+): string {
   const params = new URLSearchParams({
     client_id: config.clientId,
-    redirect_uri: config.redirectUri,
+    redirect_uri: redirectUri,
     scope: 'read:user',
     state,
     allow_signup: 'true',
@@ -74,10 +92,12 @@ export function buildAuthorizeUrl(config: GithubOAuthConfig, state: string): str
   return `${AUTHORIZE_URL}?${params.toString()}`;
 }
 
-/** Exchanges the `code` from the callback for a user access token. */
+/** Exchanges the `code` from the callback for a user access token.
+ *  `redirectUri` must be byte-identical to the one used in `buildAuthorizeUrl`. */
 export async function exchangeCodeForToken(
   config: GithubOAuthConfig,
-  code: string
+  code: string,
+  redirectUri: string
 ): Promise<string> {
   const response = await fetch(TOKEN_URL, {
     method: 'POST',
@@ -86,7 +106,7 @@ export async function exchangeCodeForToken(
       client_id: config.clientId,
       client_secret: config.clientSecret,
       code,
-      redirect_uri: config.redirectUri,
+      redirect_uri: redirectUri,
     }),
   });
 
