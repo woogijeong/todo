@@ -66,7 +66,19 @@ export default function WeeklyPlanExplorer({ plans }: { plans: PlanSummary[] }) 
           const label = plan?.title ?? `${index + 1}째 주`;
           const isThisWeek = weekStart === thisWeekStart;
           return (
-            <form key={weekStart} action={openWeekBoard.bind(null, weekStart, label)}>
+            <form
+              key={weekStart}
+              action={openWeekBoard.bind(null, weekStart, label)}
+              onSubmit={
+                plan
+                  ? undefined
+                  : (e) => {
+                      if (!window.confirm(`${weekStart} 주의 계획을 새로 만들까요?`)) {
+                        e.preventDefault();
+                      }
+                    }
+              }
+            >
               <button
                 type="submit"
                 className={`w-full rounded-card border p-4 text-left transition-colors hover:border-border-strong hover:shadow-float ${
@@ -76,6 +88,7 @@ export default function WeeklyPlanExplorer({ plans }: { plans: PlanSummary[] }) 
                 <p className="text-xs font-medium text-muted-soft">
                   {index + 1}째 주
                   {isThisWeek && <span className="ml-1.5 text-primary">이번 주</span>}
+                  {!plan && <span className="ml-1.5 text-muted-soft">· 계획 없음</span>}
                 </p>
                 <p className="mt-0.5 font-medium text-ink">{label}</p>
                 <p className="mt-0.5 text-sm text-muted">

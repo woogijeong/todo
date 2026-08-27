@@ -17,7 +17,7 @@ export default function DeletePlanButton({ planId, childTaskCount }: Props) {
   async function handleDelete() {
     const confirmed = window.confirm(
       childTaskCount > 0
-        ? `이 계획을 삭제하면 ${childTaskCount}개의 할 일이 미지정 상태가 됩니다. 계속할까요?`
+        ? `이 계획과 하위 할 일 ${childTaskCount}개가 함께 삭제됩니다. 계속할까요?`
         : '이 계획을 삭제할까요?'
     );
     if (!confirmed) return;

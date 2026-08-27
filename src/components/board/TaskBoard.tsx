@@ -19,7 +19,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { updateTaskStatus } from '@/app/(app)/tasks/status-actions';
-import { createTask, deleteTask } from '@/app/(app)/tasks/actions';
+import { createTask, deleteTask, updateTask } from '@/app/(app)/tasks/actions';
 import type { Task, TaskStatus } from '@/lib/schemas';
 import { getTodayString, getWeekDates, getWeekdayLabel } from '@/lib/date';
 import { getDueBadge } from '@/lib/due-status';
@@ -174,6 +174,31 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
     }
   }
 
+  async function editTask(
+    taskId: string,
+    patch: { title: string; dueDate: string | null }
+  ) {
+    const previous = tasks;
+    setTasks((prev) =>
+      prev.map((t) =>
+        t._id === taskId
+          ? { ...t, title: patch.title, dueDate: patch.dueDate ?? undefined }
+          : t
+      )
+    );
+    setError(null);
+    try {
+      const updated = await updateTask(taskId, {
+        title: patch.title,
+        dueDate: patch.dueDate,
+      });
+      setTasks((prev) => prev.map((t) => (t._id === taskId ? updated : t)));
+    } catch {
+      setTasks(previous);
+      setError('할 일 수정에 실패했습니다. 다시 시도해 주세요.');
+    }
+  }
+
   async function removeTask(taskId: string) {
     const target = tasks.find((t) => t._id === taskId);
     if (!target) return;
@@ -310,6 +335,7 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
                   tasks={boardTasks.filter((t) => t.status === col.status)}
                   onChangeStatus={changeStatus}
                   onDelete={removeTask}
+                  onEdit={editTask}
                   today={today}
                   showDate={selectedDay === null}
                 />
@@ -320,10 +346,13 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
       </div>
 
       {selectedDay !== null && unscheduled.length > 0 && (
-        <div className="mt-6 rounded-card border border-dashed border-hairline p-3">
-          <p className="text-sm font-medium text-muted">날짜 미정</p>
-          <DayTaskList tasks={unscheduled} onChangeStatus={changeStatus} />
-        </div>
+        <button
+          type="button"
+          onClick={() => setSelectedDay(null)}
+          className="mt-6 w-full rounded-card border border-dashed border-hairline p-3 text-left text-sm text-muted hover:bg-surface-soft"
+        >
+          날짜 미정 {unscheduled.length}개 — 전체 보기에서 날짜를 지정하세요 →
+        </button>
       )}
     </div>
   );
@@ -419,36 +448,10 @@ function WeekCalendar({
   );
 }
 
-function DayTaskList({
-  tasks,
-  onChangeStatus,
-}: {
-  tasks: Task[];
-  onChangeStatus: (taskId: string, newStatus: TaskStatus) => void;
-}) {
-  return (
-    <ul className="mt-2 flex flex-col gap-1.5">
-      {tasks.map((task) => (
-        <li key={task._id} className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={task.status === 'done'}
-            onChange={(e) => onChangeStatus(task._id, e.target.checked ? 'done' : 'todo')}
-            aria-label={`${task.title} 완료 여부`}
-            className="h-4 w-4 shrink-0 rounded-btn border-hairline"
-          />
-          <span
-            className={`text-sm ${
-              task.status === 'done' ? 'text-muted-soft line-through' : 'text-ink'
-            }`}
-          >
-            {task.title}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
+type EditFn = (
+  taskId: string,
+  patch: { title: string; dueDate: string | null }
+) => void;
 
 function Column({
   status,
@@ -456,6 +459,7 @@ function Column({
   tasks,
   onChangeStatus,
   onDelete,
+  onEdit,
   today,
   showDate,
 }: {
@@ -464,6 +468,7 @@ function Column({
   tasks: Task[];
   onChangeStatus: (taskId: string, newStatus: TaskStatus) => void;
   onDelete: (taskId: string) => void;
+  onEdit: EditFn;
   today: string;
   showDate: boolean;
 }) {
@@ -490,6 +495,7 @@ function Column({
               task={task}
               onChangeStatus={onChangeStatus}
               onDelete={onDelete}
+              onEdit={onEdit}
               today={today}
               showDate={showDate}
             />
@@ -504,12 +510,14 @@ function TaskCard({
   task,
   onChangeStatus,
   onDelete,
+  onEdit,
   today,
   showDate,
 }: {
   task: Task;
   onChangeStatus: (taskId: string, newStatus: TaskStatus) => void;
   onDelete: (taskId: string) => void;
+  onEdit: EditFn;
   today: string;
   showDate: boolean;
 }) {
@@ -522,8 +530,69 @@ function TaskCard({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(task.title);
+  const [draftDue, setDraftDue] = useState(task.dueDate ?? '');
+
+  function startEditing() {
+    setDraftTitle(task.title);
+    setDraftDue(task.dueDate ?? '');
+    setEditing(true);
+  }
+
+  function saveEdit(e: FormEvent) {
+    e.preventDefault();
+    const title = draftTitle.trim();
+    if (!title) return;
+    onEdit(task._id, { title, dueDate: draftDue || null });
+    setEditing(false);
+  }
+
   const dueBadge = getDueBadge(task.dueDate, task.status, today);
   const dayNum = showDate && task.dueDate ? Number(task.dueDate.slice(8, 10)) : null;
+
+  if (editing) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="rounded-card border border-ink bg-canvas p-2"
+      >
+        <form onSubmit={saveEdit} className="flex flex-col gap-1.5">
+          <input
+            value={draftTitle}
+            onChange={(e) => setDraftTitle(e.target.value)}
+            aria-label="할 일 제목"
+            autoFocus
+            className="rounded-btn border border-hairline px-2 py-1 text-sm"
+          />
+          <input
+            type="date"
+            value={draftDue}
+            onChange={(e) => setDraftDue(e.target.value)}
+            onClick={(e) => e.currentTarget.showPicker?.()}
+            aria-label="기한"
+            className="rounded-btn border border-hairline px-2 py-1 text-xs"
+          />
+          <div className="flex gap-1">
+            <button
+              type="submit"
+              className="rounded-btn bg-primary px-2.5 py-1 text-xs font-medium text-on-primary hover:bg-primary-active"
+            >
+              저장
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="rounded-btn border border-hairline px-2.5 py-1 text-xs text-muted hover:bg-surface-soft"
+            >
+              취소
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -568,6 +637,15 @@ function TaskCard({
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          onClick={startEditing}
+          className="shrink-0 rounded-btn px-1.5 py-1 text-xs text-muted-soft hover:bg-surface-strong hover:text-ink"
+          aria-label="할 일 편집"
+          title="편집"
+        >
+          ✎
+        </button>
         <button
           type="button"
           onClick={() => onDelete(task._id)}

@@ -176,23 +176,21 @@ export async function deletePlan(id: string): Promise<number> {
   const existing = await plansCollection(db).findOne({ _id: objectId, userId });
   if (!existing) throw new NotFoundError(PLAN_ENTITY);
 
-  const orphanResult = await db
-    .collection('tasks')
-    .updateMany(
-      { weeklyPlanId: id, userId },
-      { $set: { weeklyPlanId: null, updatedAt: new Date() } }
-    );
+  // Cascade-delete the plan's tasks. Their status history lives on in the
+  // append-only `taskEvents` collection (with its own userId + plan
+  // snapshot), so stats are unaffected — but the tasks themselves have no
+  // home once the plan is gone.
+  const deleted = await db.collection('tasks').deleteMany({ weeklyPlanId: id, userId });
 
   await plansCollection(db).deleteOne({ _id: objectId, userId });
 
   revalidatePath('/plans');
   revalidatePath('/');
-  revalidatePath('/tasks/unassigned');
   if (existing.monthlyPlanId) {
     revalidatePath(`/monthly-plans/${existing.monthlyPlanId}`);
   }
 
-  return orphanResult.modifiedCount;
+  return deleted.deletedCount;
 }
 
 export async function listPlans(): Promise<WeeklyPlan[]> {

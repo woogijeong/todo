@@ -13,16 +13,15 @@ import {
 import { requireUserId } from '@/lib/auth';
 
 /** Every mutation below revalidates '/': the dashboard aggregates the
- *  current week's plan, its task checklist, and the unassigned-task count,
- *  so any task create/update/delete can change what it shows. Without this,
- *  the dashboard (and any other cached view) can keep showing pre-mutation
- *  data — Next.js reuses cached page output on back/forward navigation (and
- *  for a short window on forward navigation) unless a mutation explicitly
- *  invalidates the paths it affects. '/tasks/unassigned' and the owning
- *  plan's board page are revalidated too, for the same reason. */
+ *  current week's plan and its task checklist, so any task
+ *  create/update/delete can change what it shows. Without this, the
+ *  dashboard (and any other cached view) can keep showing pre-mutation data
+ *  — Next.js reuses cached page output on back/forward navigation (and for a
+ *  short window on forward navigation) unless a mutation explicitly
+ *  invalidates the paths it affects. The owning plan's board page is
+ *  revalidated too, for the same reason. */
 function revalidateTaskViews(weeklyPlanId: string | null | undefined): void {
   revalidatePath('/');
-  revalidatePath('/tasks/unassigned');
   if (weeklyPlanId) {
     revalidatePath(`/plans/${weeklyPlanId}`);
   }
@@ -105,14 +104,26 @@ export async function updateTask(id: string, input: unknown): Promise<Task> {
   const objectId = parseObjectId(id);
   if (!objectId) throw new NotFoundError('할 일');
 
-  const parsed = taskInputSchema.partial().safeParse(input);
+  // `dueDate: '' | null` means "clear the due date" (back to unscheduled) —
+  // that can't go through `dateOnlyString`, so pull it out before parsing.
+  const raw = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
+  const clearDueDate = raw.dueDate === '' || raw.dueDate === null;
+  const parsed = taskInputSchema
+    .partial()
+    .safeParse(clearDueDate ? { ...raw, dueDate: undefined } : raw);
   if (!parsed.success) {
     throw new ValidationError('할 일 입력값이 올바르지 않습니다.');
   }
 
-  const update: Partial<TaskDoc> = { ...parsed.data, updatedAt: new Date() };
-  if (update.weeklyPlanId) {
-    await assertParentOwned(await getDb(), 'weeklyPlans', update.weeklyPlanId, userId, '주간 계획');
+  const set: Partial<TaskDoc> = { ...parsed.data, updatedAt: new Date() };
+  if (set.weeklyPlanId) {
+    await assertParentOwned(await getDb(), 'weeklyPlans', set.weeklyPlanId, userId, '주간 계획');
+  }
+
+  const mongoUpdate: Record<string, unknown> = { $set: set };
+  if (clearDueDate) {
+    delete set.dueDate;
+    mongoUpdate.$unset = { dueDate: '' };
   }
 
   const tasks = await getTasksCollection();
@@ -122,7 +133,7 @@ export async function updateTask(id: string, input: unknown): Promise<Task> {
   );
   const result = await tasks.findOneAndUpdate(
     { _id: objectId, userId },
-    { $set: update },
+    mongoUpdate,
     { returnDocument: 'after' }
   );
 
