@@ -1,6 +1,0 @@
-RALPH PROGRESS LOG — 할 일 관리 앱
-PRD: .omc/state/sessions/fb8ea4b5-ddaa-4a4c-a178-366aa6705832/prd.json
-Plan ref: docs/.omc/plans/todo-app-plan.md
-
-[iteration 1] PRD refined into 19 stories (US-001..US-019) covering P0 (US-001..US-013) and P1 (US-014..US-019). Starting implementation.
-[iteration 2] create-next-app scaffold generated at C:\Users\sozx2\claude-book\todo (TS+Tailwind+ESLint+App Router+src dir+@/* alias). npm install still running in background (task brfus2d0r). Next: install mongodb/zod/@dnd-kit deps once base install completes, then US-002/003/004 in parallel.

@@ -33,6 +33,14 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# secrets / credential scratch files
+todo app client.txt
+*secret*.txt
+
+# OMC session state, agent transcripts, and internal bookkeeping
+.omc/
+docs/.omc/state/
+
 # vercel
 .vercel
 
