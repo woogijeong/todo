@@ -30,7 +30,7 @@ export default async function PlanPage({
   }
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
+    <main className="mx-auto max-w-3xl p-6">
       <Link href="/plans" className="mb-4 inline-block text-sm text-ink hover:underline">
         ‹ 주간 계획
       </Link>

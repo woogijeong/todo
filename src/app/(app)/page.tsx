@@ -117,22 +117,24 @@ export default async function Home() {
 
         <section className="rounded-card border border-hairline p-6">
           <h2 className="text-base font-semibold text-ink">이번 달 통계</h2>
-          <div className="mt-4 flex h-20 items-end gap-3">
+          <div className="mt-5 flex items-end gap-5">
             {thisMonthWeekStats.map((week, index) => (
-              <div
-                key={week.weekStart}
-                className="flex h-full flex-1 flex-col items-center justify-end gap-1.5"
-              >
-                <div className="flex h-full w-full items-end rounded-t bg-surface-strong">
+              <div key={week.weekStart} className="flex w-9 flex-col items-center gap-2">
+                <span className="text-[11px] font-semibold tabular-nums text-muted">
+                  {week.progress === null ? '–' : `${week.progress}%`}
+                </span>
+                <div
+                  className="flex h-24 w-full items-end overflow-hidden rounded-full bg-surface-strong"
+                  title={`${index + 1}째 주 · ${
+                    week.progress === null ? '할 일 없음' : `${week.progress}%`
+                  }`}
+                >
                   <div
-                    className="w-full rounded-t bg-primary"
+                    className="w-full rounded-full bg-primary transition-all"
                     style={{ height: `${week.progress ?? 0}%` }}
-                    title={`${index + 1}째 주 · ${
-                      week.progress === null ? '할 일 없음' : `${week.progress}%`
-                    }`}
                   />
                 </div>
-                <span className="text-[12px] text-muted">{index + 1}주</span>
+                <span className="text-[11px] text-muted">{index + 1}주</span>
               </div>
             ))}
           </div>

@@ -273,7 +273,7 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
         </div>
       </DndContext>
 
-      <DailyView
+      <WeekCalendar
         tasks={tasks}
         weekDates={weekDates}
         today={today}
@@ -303,7 +303,11 @@ function ProgressBar({ progress }: { progress: number | null }) {
   );
 }
 
-function DailyView({
+/**
+ * "날짜별 보기": a week calendar that stays beside the task list. Picking a
+ * day filters the list to just that day's tasks; "전체" shows every day.
+ */
+function WeekCalendar({
   tasks,
   weekDates,
   today,
@@ -314,6 +318,8 @@ function DailyView({
   today: string;
   onChangeStatus: (taskId: string, newStatus: TaskStatus) => void;
 }) {
+  const [selected, setSelected] = useState<string | null>(null);
+
   const byDate = useMemo(() => {
     const map = new Map<string, Task[]>(weekDates.map((date) => [date, []]));
     const unscheduled: Task[] = [];
@@ -328,25 +334,96 @@ function DailyView({
     return { map, unscheduled };
   }, [tasks, weekDates]);
 
+  const selectedTasks = selected ? byDate.map.get(selected) ?? [] : [];
+
   return (
     <div className="mt-8">
       <h2 className="text-sm font-semibold text-muted">날짜별 보기</h2>
-      <div className="mt-3 flex flex-col gap-2">
-        {weekDates.map((date) => (
-          <DayRow
-            key={date}
-            date={date}
-            tasks={byDate.map.get(date) ?? []}
-            isToday={date === today}
-            onChangeStatus={onChangeStatus}
-          />
-        ))}
-        {byDate.unscheduled.length > 0 && (
-          <div className="rounded-btn border border-dashed border-hairline p-3">
-            <p className="text-sm font-medium text-muted">날짜 미정</p>
-            <DayTaskList tasks={byDate.unscheduled} onChangeStatus={onChangeStatus} />
-          </div>
-        )}
+      <div className="mt-3 flex flex-col gap-4 sm:flex-row">
+        <div className="flex shrink-0 gap-2 overflow-x-auto pb-1 sm:w-44 sm:flex-col sm:overflow-visible sm:pb-0">
+          <button
+            type="button"
+            onClick={() => setSelected(null)}
+            aria-pressed={selected === null}
+            className={`shrink-0 rounded-btn px-3 py-2 text-sm transition-colors ${
+              selected === null
+                ? 'bg-ink text-white'
+                : 'border border-hairline text-muted hover:bg-surface-soft'
+            }`}
+          >
+            전체
+          </button>
+          {weekDates.map((date) => {
+            const count = byDate.map.get(date)?.length ?? 0;
+            const isSelected = selected === date;
+            const isToday = date === today;
+            return (
+              <button
+                key={date}
+                type="button"
+                onClick={() => setSelected(date)}
+                aria-pressed={isSelected}
+                className={`flex shrink-0 items-center justify-between gap-2 rounded-btn px-3 py-2 text-sm transition-colors ${
+                  isSelected
+                    ? 'bg-ink text-white'
+                    : `border ${isToday ? 'border-ink' : 'border-hairline'} text-body hover:bg-surface-soft`
+                }`}
+              >
+                <span className="whitespace-nowrap">
+                  {Number(date.slice(8, 10))}일 ({getWeekdayLabel(date)})
+                  {isToday && !isSelected && (
+                    <span className="ml-1 text-[11px] text-ink">오늘</span>
+                  )}
+                </span>
+                {count > 0 && (
+                  <span
+                    className={`rounded-full px-1.5 text-[11px] ${
+                      isSelected ? 'bg-white/20 text-white' : 'bg-surface-strong text-muted'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          {selected === null ? (
+            <div className="flex flex-col gap-2">
+              {weekDates.map((date) => (
+                <DayRow
+                  key={date}
+                  date={date}
+                  tasks={byDate.map.get(date) ?? []}
+                  isToday={date === today}
+                  onChangeStatus={onChangeStatus}
+                />
+              ))}
+              {byDate.unscheduled.length > 0 && (
+                <div className="rounded-card border border-dashed border-hairline p-3">
+                  <p className="text-sm font-medium text-muted">날짜 미정</p>
+                  <DayTaskList tasks={byDate.unscheduled} onChangeStatus={onChangeStatus} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-card border border-hairline p-4">
+              <p className="text-sm font-medium text-body">
+                {selected} ({getWeekdayLabel(selected)})
+                {selected === today && (
+                  <span className="ml-1.5 text-xs font-normal text-ink">오늘</span>
+                )}
+              </p>
+              {selectedTasks.length === 0 ? (
+                <p className="mt-1 text-xs text-muted-soft">이 날짜에 할 일이 없습니다.</p>
+              ) : (
+                <DayTaskList tasks={selectedTasks} onChangeStatus={onChangeStatus} />
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
