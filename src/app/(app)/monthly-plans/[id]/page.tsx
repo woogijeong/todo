@@ -2,8 +2,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getMonthlyPlan } from '../actions';
 import { listPlans } from '@/app/(app)/plans/actions';
+import { listGoals } from '@/app/(app)/goals/actions';
 import { getMonthlyPlanProgress, getWeeklyPlanProgress } from '@/lib/progress';
 import DeleteMonthlyPlanButton from './DeleteMonthlyPlanButton';
+import MonthlyPlanEditForm from './MonthlyPlanEditForm';
 import { requirePageUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -21,10 +23,11 @@ export default async function MonthlyPlanDetailPage({
   await requirePageUser();
 
   const { id } = await params;
-  const [plan, overallProgress, allPlans] = await Promise.all([
+  const [plan, overallProgress, allPlans, goals] = await Promise.all([
     getMonthlyPlan(id),
     getMonthlyPlanProgress(id),
     listPlans(),
+    listGoals(),
   ]);
 
   if (!plan) {
@@ -35,6 +38,9 @@ export default async function MonthlyPlanDetailPage({
   const planProgresses = await Promise.all(
     childPlans.map((p) => getWeeklyPlanProgress(p._id))
   );
+  const linkedGoal = plan.yearlyGoalId
+    ? goals.find((g) => g._id === plan.yearlyGoalId) ?? null
+    : null;
 
   return (
     <main className="mx-auto max-w-2xl p-6">
@@ -45,9 +51,26 @@ export default async function MonthlyPlanDetailPage({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-ink">{plan.title}</h1>
-          <p className="mt-1 text-sm text-muted">{monthLabel(plan.month)}</p>
+          <p className="mt-1 text-sm text-muted">
+            {monthLabel(plan.month)}
+            {linkedGoal && (
+              <>
+                {' · '}
+                <Link
+                  href={`/goals/${linkedGoal._id}`}
+                  className="text-ink hover:underline"
+                >
+                  {linkedGoal.title}
+                </Link>
+              </>
+            )}
+          </p>
         </div>
         <DeleteMonthlyPlanButton monthlyPlanId={id} childWeeklyPlanCount={childPlans.length} />
+      </div>
+
+      <div className="mt-4">
+        <MonthlyPlanEditForm plan={plan} goals={goals} />
       </div>
 
       <section className="mt-8">

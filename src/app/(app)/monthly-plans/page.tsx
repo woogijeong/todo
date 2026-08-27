@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { listMonthlyPlans } from './actions';
-import MonthlyPlanCreateToggle from './MonthlyPlanCreateToggle';
+import MonthlyPlanForm from './MonthlyPlanForm';
 import { listGoals } from '@/app/(app)/goals/actions';
 import { getMonthlyPlanProgress } from '@/lib/progress';
 import { requirePageUser } from '@/lib/auth';
@@ -19,42 +19,34 @@ export default async function MonthlyPlansPage() {
   const progresses = await Promise.all(plans.map((plan) => getMonthlyPlanProgress(plan._id)));
 
   return (
-    <main className="mx-auto max-w-4xl p-6">
-      <MonthlyPlanCreateToggle goals={goals} existingMonths={plans.map((plan) => plan.month)} />
+    <main className="mx-auto max-w-2xl p-6">
+      <MonthlyPlanForm goals={goals} existingMonths={plans.map((plan) => plan.month)} />
 
       {plans.length === 0 ? (
-        <p className="mt-8 text-muted">등록된 월간 계획이 없습니다.</p>
+        <p className="mt-8 text-muted">아직 등록된 월간 계획이 없습니다.</p>
       ) : (
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+        <ul className="mt-8 space-y-2">
           {plans.map((plan, index) => {
             const progress = progresses[index];
             return (
-              <Link
+              <li
                 key={plan._id}
-                href={`/monthly-plans/${plan._id}`}
-                className="rounded-card border border-hairline p-4 transition-colors hover:border-border-strong hover:shadow-float"
+                className="rounded-card border border-hairline p-4 transition-shadow hover:shadow-float"
               >
-                <p className="font-medium text-ink">{plan.title}</p>
-                <p className="mt-1 text-sm text-muted">{monthLabel(plan.month)}</p>
-                <div className="mt-3">
-                  {progress === null ? (
-                    <p className="text-xs text-muted-soft">할 일 없음</p>
-                  ) : (
-                    <>
-                      <div className="h-1.5 w-full rounded-full bg-surface-strong">
-                        <div
-                          className="h-1.5 rounded-full bg-primary"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                      <p className="mt-1 text-xs text-muted">{progress}%</p>
-                    </>
-                  )}
-                </div>
-              </Link>
+                <Link
+                  href={`/monthly-plans/${plan._id}`}
+                  className="font-medium text-ink hover:underline"
+                >
+                  {plan.title}
+                </Link>
+                <span className="ml-2 text-sm text-muted">{monthLabel(plan.month)}</span>
+                {progress !== null && (
+                  <span className="ml-2 text-sm text-muted">· {progress}%</span>
+                )}
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </main>
   );
