@@ -29,20 +29,17 @@ export default async function MonthlyPlansPage() {
           {plans.map((plan, index) => {
             const progress = progresses[index];
             return (
-              <li
-                key={plan._id}
-                className="rounded-card border border-hairline p-4 transition-shadow hover:shadow-float"
-              >
+              <li key={plan._id}>
                 <Link
                   href={`/monthly-plans/${plan._id}`}
-                  className="font-medium text-ink hover:underline"
+                  className="block rounded-card border border-hairline p-4 transition-shadow hover:shadow-float"
                 >
-                  {plan.title}
+                  <span className="font-medium text-ink">{plan.title}</span>
+                  <span className="ml-2 text-sm text-muted">{monthLabel(plan.month)}</span>
+                  {progress !== null && (
+                    <span className="ml-2 text-sm text-muted">· {progress}%</span>
+                  )}
                 </Link>
-                <span className="ml-2 text-sm text-muted">{monthLabel(plan.month)}</span>
-                {progress !== null && (
-                  <span className="ml-2 text-sm text-muted">· {progress}%</span>
-                )}
               </li>
             );
           })}

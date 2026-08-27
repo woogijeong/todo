@@ -4,6 +4,7 @@ import { getGoal } from '../actions';
 import { listMonthlyPlans } from '@/app/(app)/monthly-plans/actions';
 import { getYearlyGoalProgress, getMonthlyPlanProgress } from '@/lib/progress';
 import DeleteGoalButton from './DeleteGoalButton';
+import GoalEditForm from './GoalEditForm';
 import { requirePageUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -49,8 +50,13 @@ export default async function GoalDetailPage({
         </div>
         <DeleteGoalButton goalId={id} childPlanCount={childPlans.length} />
       </div>
+
+      <div className="mt-4">
+        <GoalEditForm goal={goal} />
+      </div>
+
       {goal.description && (
-        <p className="mt-4 whitespace-pre-wrap">{goal.description}</p>
+        <p className="mt-4 whitespace-pre-wrap text-body">{goal.description}</p>
       )}
 
       <section className="mt-8">

@@ -113,11 +113,10 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
 
-  // The board (drag-and-drop columns) shows one day at a time. `null` means
-  // "전체" — which resolves to today when today falls in this week, otherwise
-  // to the week's first day.
+  // The calendar drives which tasks the drag-and-drop board shows. `null` is
+  // "전체" — every task in the plan, each card tagged with its date. Pick a
+  // day and the board narrows to just that day.
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const displayDay = selectedDay ?? (weekDates.includes(today) ? today : weekDates[0]);
 
   const { byDate, unscheduled } = useMemo(() => {
     const map = new Map<string, Task[]>(weekDates.map((d) => [d, []]));
@@ -130,7 +129,7 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
     return { byDate: map, unscheduled: un };
   }, [tasks, weekDates]);
 
-  const dayTasks = byDate.get(displayDay) ?? [];
+  const boardTasks = selectedDay ? byDate.get(selectedDay) ?? [] : tasks;
 
   async function changeStatus(taskId: string, newStatus: TaskStatus) {
     const previous = tasks;
@@ -163,7 +162,7 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
         weeklyPlanId: planId,
         title,
         status: 'todo',
-        dueDate: newDueDate || displayDay,
+        dueDate: newDueDate || selectedDay || today,
       });
       setTasks((prev) => [...prev, created]);
       setNewTitle('');
@@ -258,10 +257,16 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
 
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold text-ink">
-            {Number(displayDay.slice(5, 7))}월 {Number(displayDay.slice(8, 10))}일 (
-            {getWeekdayLabel(displayDay)})
-            {displayDay === today && (
-              <span className="ml-1.5 text-xs font-normal text-primary">오늘</span>
+            {selectedDay ? (
+              <>
+                {Number(selectedDay.slice(5, 7))}월 {Number(selectedDay.slice(8, 10))}일 (
+                {getWeekdayLabel(selectedDay)})
+                {selectedDay === today && (
+                  <span className="ml-1.5 text-xs font-normal text-primary">오늘</span>
+                )}
+              </>
+            ) : (
+              '이번 주 전체'
             )}
           </h2>
 
@@ -278,6 +283,7 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
               type="date"
               value={newDueDate}
               onChange={(e) => setNewDueDate(e.target.value)}
+              onClick={(e) => e.currentTarget.showPicker?.()}
               aria-label="기한"
               className="rounded-btn border border-hairline px-2 py-1.5 text-sm"
             />
@@ -301,10 +307,11 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
                   key={col.status}
                   status={col.status}
                   label={col.label}
-                  tasks={dayTasks.filter((t) => t.status === col.status)}
+                  tasks={boardTasks.filter((t) => t.status === col.status)}
                   onChangeStatus={changeStatus}
                   onDelete={removeTask}
                   today={today}
+                  showDate={selectedDay === null}
                 />
               ))}
             </div>
@@ -312,7 +319,7 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
         </div>
       </div>
 
-      {unscheduled.length > 0 && (
+      {selectedDay !== null && unscheduled.length > 0 && (
         <div className="mt-6 rounded-card border border-dashed border-hairline p-3">
           <p className="text-sm font-medium text-muted">날짜 미정</p>
           <DayTaskList tasks={unscheduled} onChangeStatus={changeStatus} />
@@ -450,6 +457,7 @@ function Column({
   onChangeStatus,
   onDelete,
   today,
+  showDate,
 }: {
   status: TaskStatus;
   label: string;
@@ -457,6 +465,7 @@ function Column({
   onChangeStatus: (taskId: string, newStatus: TaskStatus) => void;
   onDelete: (taskId: string) => void;
   today: string;
+  showDate: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
@@ -482,6 +491,7 @@ function Column({
               onChangeStatus={onChangeStatus}
               onDelete={onDelete}
               today={today}
+              showDate={showDate}
             />
           ))}
         </div>
@@ -495,11 +505,13 @@ function TaskCard({
   onChangeStatus,
   onDelete,
   today,
+  showDate,
 }: {
   task: Task;
   onChangeStatus: (taskId: string, newStatus: TaskStatus) => void;
   onDelete: (taskId: string) => void;
   today: string;
+  showDate: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task._id });
@@ -511,6 +523,7 @@ function TaskCard({
   };
 
   const dueBadge = getDueBadge(task.dueDate, task.status, today);
+  const dayNum = showDate && task.dueDate ? Number(task.dueDate.slice(8, 10)) : null;
 
   return (
     <div
@@ -520,7 +533,14 @@ function TaskCard({
     >
       <div {...attributes} {...listeners} className="cursor-grab touch-none">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-medium text-ink">{task.title}</p>
+          <p className="text-sm font-medium text-ink">
+            {dayNum !== null && (
+              <span className="mr-1.5 inline-block rounded-full bg-surface-strong px-1.5 text-[11px] font-semibold text-muted">
+                {dayNum}
+              </span>
+            )}
+            {task.title}
+          </p>
           {dueBadge && (
             <span
               className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${

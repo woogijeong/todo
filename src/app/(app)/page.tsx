@@ -38,7 +38,10 @@ export default async function Home() {
     Promise.all(goals.map((goal) => getYearlyGoalProgress(goal._id))),
   ]);
 
-  const thisMonth = getTodayString().slice(0, 7);
+  const todayString = getTodayString();
+  const todayTasks = currentPlanTasks.filter((t) => t.dueDate === todayString);
+
+  const thisMonth = todayString.slice(0, 7);
   const thisMonthStat = months.find((m) => m.month === thisMonth) ?? null;
   const thisMonthWeekStats = getMonthWeekStarts(thisMonth).map((weekStart) => ({
     weekStart,
@@ -50,34 +53,54 @@ export default async function Home() {
       <h1 className="text-[28px] font-bold tracking-tight text-ink">대시보드</h1>
 
       <div className="mt-6 flex flex-col gap-4">
-        <section className="rounded-card border border-hairline p-6">
-          <h2 className="text-base font-semibold text-ink">이번 주 계획</h2>
-          {currentPlan ? (
-            <div className="mt-3">
-              <Link href={`/plans/${currentPlan._id}`} className="font-medium text-ink hover:underline">
-                {currentPlan.title}
-              </Link>
-              <p className="text-sm text-muted">
-                {currentPlan.weekStart} ~ {currentPlan.weekEnd}
-              </p>
-              <WeekChecklist initialTasks={currentPlanTasks} />
-            </div>
-          ) : (
-            <div className="mt-3">
-              <p className="text-sm text-muted">
-                {thisWeekStart} 주에 대한 계획이 아직 없습니다.
-              </p>
-              <form action={createThisWeekPlanAction} className="mt-3">
-                <button
-                  type="submit"
-                  className="rounded-btn bg-primary px-4 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary-active"
+        <div className="grid gap-4 md:grid-cols-2">
+          <section className="rounded-card border border-hairline p-6">
+            <h2 className="text-base font-semibold text-ink">이번 주 계획</h2>
+            {currentPlan ? (
+              <div className="mt-3">
+                <Link
+                  href={`/plans/${currentPlan._id}`}
+                  className="font-medium text-ink hover:underline"
                 >
-                  이번 주 계획 만들기
-                </button>
-              </form>
-            </div>
-          )}
-        </section>
+                  {currentPlan.title}
+                </Link>
+                <p className="text-sm text-muted">
+                  {currentPlan.weekStart} ~ {currentPlan.weekEnd}
+                </p>
+                <WeekChecklist initialTasks={currentPlanTasks} interactive={false} />
+              </div>
+            ) : (
+              <div className="mt-3">
+                <p className="text-sm text-muted">
+                  {thisWeekStart} 주에 대한 계획이 아직 없습니다.
+                </p>
+                <form action={createThisWeekPlanAction} className="mt-3">
+                  <button
+                    type="submit"
+                    className="rounded-btn bg-primary px-4 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary-active"
+                  >
+                    이번 주 계획 만들기
+                  </button>
+                </form>
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-card border border-hairline p-6">
+            <h2 className="text-base font-semibold text-ink">오늘의 계획</h2>
+            {currentPlan ? (
+              <div className="mt-3">
+                <WeekChecklist
+                  key={todayString}
+                  initialTasks={todayTasks}
+                  emptyLabel="오늘 할 일이 없습니다."
+                />
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-muted">이번 주 계획을 먼저 만들어 주세요.</p>
+            )}
+          </section>
+        </div>
 
         <section className="rounded-card border border-hairline p-6">
           <div className="flex items-center justify-between">

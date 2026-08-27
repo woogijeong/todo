@@ -17,9 +17,17 @@ function computeProgress(statuses: TaskStatus[]): number | null {
 
 type Props = {
   initialTasks: Task[];
+  /** `false` renders a read-only list (no checkboxes) — used for the
+   *  week-overview panel where check-off happens on the "오늘" panel only. */
+  interactive?: boolean;
+  emptyLabel?: string;
 };
 
-export default function WeekChecklist({ initialTasks }: Props) {
+export default function WeekChecklist({
+  initialTasks,
+  interactive = true,
+  emptyLabel = '할 일 없음',
+}: Props) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +57,7 @@ export default function WeekChecklist({ initialTasks }: Props) {
   return (
     <div className="mt-2">
       {progress === null ? (
-        <p className="text-sm text-muted-soft">할 일 없음</p>
+        <p className="text-sm text-muted-soft">{emptyLabel}</p>
       ) : (
         <div>
           <div className="h-2 w-full rounded-full bg-surface-strong">
@@ -66,13 +74,15 @@ export default function WeekChecklist({ initialTasks }: Props) {
         <ul className="mt-3 flex flex-col gap-1.5">
           {tasks.map((task) => (
             <li key={task._id} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={task.status === 'done'}
-                onChange={(e) => toggle(task._id, e.target.checked)}
-                aria-label={`${task.title} 완료 여부`}
-                className="h-4 w-4 shrink-0 rounded-btn border-hairline"
-              />
+              {interactive && (
+                <input
+                  type="checkbox"
+                  checked={task.status === 'done'}
+                  onChange={(e) => toggle(task._id, e.target.checked)}
+                  aria-label={`${task.title} 완료 여부`}
+                  className="h-4 w-4 shrink-0 rounded-btn border-hairline"
+                />
+              )}
               <span
                 className={`text-sm ${
                   task.status === 'done' ? 'text-muted-soft line-through' : 'text-ink'

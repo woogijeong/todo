@@ -54,14 +54,14 @@ export default async function GoalsPage() {
       ) : (
         <ul className="space-y-2">
           {goals.map((goal) => (
-            <li
-              key={goal._id}
-              className="rounded-card border border-hairline p-4 transition-shadow hover:shadow-float"
-            >
-              <Link href={`/goals/${goal._id}`} className="font-medium text-ink hover:underline">
-                {goal.title}
+            <li key={goal._id}>
+              <Link
+                href={`/goals/${goal._id}`}
+                className="block rounded-card border border-hairline p-4 transition-shadow hover:shadow-float"
+              >
+                <span className="font-medium text-ink">{goal.title}</span>
+                <span className="ml-2 text-sm text-muted">{goal.year}</span>
               </Link>
-              <span className="ml-2 text-sm text-muted">{goal.year}</span>
             </li>
           ))}
         </ul>
