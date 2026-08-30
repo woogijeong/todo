@@ -70,13 +70,6 @@ export async function updateTaskStatus(taskId: string, newStatus: TaskStatus): P
     update.completedAt = null;
   }
 
-  const result = await tasks.findOneAndUpdate(
-    { _id: objectId, userId },
-    { $set: update },
-    { returnDocument: 'after' }
-  );
-  if (!result) throw new NotFoundError('할 일');
-
   const event: TaskEventInput = taskEventInputSchema.parse({
     userId,
     taskId,
@@ -86,7 +79,17 @@ export async function updateTaskStatus(taskId: string, newStatus: TaskStatus): P
     occurredAt: now,
   });
 
-  await db.collection<TaskEventInput>('taskEvents').insertOne(event);
+  // The status update and the audit-log append don't depend on each other —
+  // issue both round-trips at once rather than back to back.
+  const [result] = await Promise.all([
+    tasks.findOneAndUpdate(
+      { _id: objectId, userId },
+      { $set: update },
+      { returnDocument: 'after' }
+    ),
+    db.collection<TaskEventInput>('taskEvents').insertOne(event),
+  ]);
+  if (!result) throw new NotFoundError('할 일');
 
   // The dashboard's week checklist/progress and the plan board both derive
   // from this task's status, and can be served from a stale cached page
