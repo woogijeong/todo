@@ -52,14 +52,15 @@ export default function MonthlyPlanForm({ goals, existingMonths }: Props) {
 
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold text-ink">월간 계획</h1>
+      <h1 className="mb-1.5 text-[26px] font-bold tracking-tight text-ink">월간 계획</h1>
+      <p className="mb-6 text-sm text-muted-soft">연간 목표를 달 단위로 나눈 계획</p>
 
       <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
         <input
           name="title"
           placeholder="계획 제목"
           required
-          className="min-w-40 flex-1 rounded-btn border border-hairline px-3 py-2.5 text-sm focus:border-ink focus:outline-none"
+          className="min-w-40 flex-1 rounded-btn border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
         />
         <input
           name="month"
@@ -67,13 +68,13 @@ export default function MonthlyPlanForm({ goals, existingMonths }: Props) {
           defaultValue={thisMonth}
           aria-label="해당 월"
           onClick={(e) => e.currentTarget.showPicker?.()}
-          className="rounded-btn border border-hairline px-3 py-2.5 text-sm focus:border-ink focus:outline-none"
+          className="rounded-btn border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
         />
         <select
           name="yearlyGoalId"
           defaultValue=""
           aria-label="연간 계획 연동"
-          className="rounded-btn border border-hairline px-3 py-2.5 text-sm focus:border-ink focus:outline-none"
+          className="rounded-btn border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
         >
           <option value="">연간 계획 없음</option>
           {goals.map((goal) => (
@@ -85,7 +86,7 @@ export default function MonthlyPlanForm({ goals, existingMonths }: Props) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-btn bg-primary px-5 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-active disabled:opacity-50"
+          className="rounded-btn bg-primary px-5 py-3 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-active disabled:opacity-50"
         >
           추가
         </button>

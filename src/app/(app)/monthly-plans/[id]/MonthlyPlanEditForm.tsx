@@ -48,7 +48,7 @@ export default function MonthlyPlanEditForm({ plan, goals }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="whitespace-nowrap rounded-btn border border-ink px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-soft"
+        className="whitespace-nowrap rounded-btn border border-primary px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-surface-strong"
       >
         편집
       </button>
@@ -65,7 +65,7 @@ export default function MonthlyPlanEditForm({ plan, goals }: Props) {
         defaultValue={plan.title}
         required
         placeholder="계획 제목"
-        className="rounded-btn border border-hairline px-3 py-2.5 text-sm focus:border-ink focus:outline-none"
+        className="rounded-btn border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
       />
       <input
         name="month"
@@ -74,13 +74,13 @@ export default function MonthlyPlanEditForm({ plan, goals }: Props) {
         required
         aria-label="해당 월"
         onClick={(e) => e.currentTarget.showPicker?.()}
-        className="rounded-btn border border-hairline px-3 py-2.5 text-sm focus:border-ink focus:outline-none"
+        className="rounded-btn border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
       />
       <select
         name="yearlyGoalId"
         defaultValue={plan.yearlyGoalId ?? ''}
         aria-label="연간 계획 연동"
-        className="rounded-btn border border-hairline px-3 py-2.5 text-sm focus:border-ink focus:outline-none"
+        className="rounded-btn border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
       >
         <option value="">연간 계획 없음</option>
         {goals.map((goal) => (

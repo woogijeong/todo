@@ -39,7 +39,7 @@ export default function DeletePlanButton({ planId, childTaskCount }: Props) {
         type="button"
         onClick={handleDelete}
         disabled={pending}
-        className="whitespace-nowrap rounded-btn border border-[#f0c9c0] px-3 py-1.5 text-sm font-medium text-error hover:bg-[#fdecec] disabled:opacity-50"
+        className="whitespace-nowrap rounded-btn border border-border-strong px-3 py-1.5 text-sm font-semibold text-error transition-colors hover:bg-surface-strong disabled:opacity-50"
       >
         계획 삭제
       </button>

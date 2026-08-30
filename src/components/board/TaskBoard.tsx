@@ -24,6 +24,19 @@ import type { Task, TaskStatus } from '@/lib/schemas';
 import { getTodayString, getWeekDates, getWeekdayLabel } from '@/lib/date';
 import { getDueBadge } from '@/lib/due-status';
 import { notifyDueTask, requestNotificationPermission } from '@/lib/notify';
+import ProgressRing from '@/components/ui/ProgressRing';
+import PaperCheck from '@/components/ui/PaperCheck';
+
+const COLUMN_TONE: Record<TaskStatus, { text: string; border: string }> = {
+  todo: { text: 'text-ink', border: 'border-ink' },
+  doing: {
+    text: 'text-[color:var(--color-accent-sage)]',
+    border: 'border-[color:var(--color-accent-sage)]',
+  },
+  done: { text: 'text-muted-soft', border: 'border-border-strong' },
+};
+
+const STICKY_TINTS = ['#eaeadb', '#f2e2cf'];
 
 // Not imported from '@/lib/progress': that module's top-level `import {
 // getDb } from './mongodb'` establishes a MongoDB connection as a module
@@ -241,7 +254,11 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
     <div className="mt-6">
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1">
-          <ProgressBar progress={progress} />
+          <ProgressBar
+            progress={progress}
+            total={tasks.length}
+            done={tasks.filter((t) => t.status === 'done').length}
+          />
         </div>
         {notifPermission === 'default' && (
           <button
@@ -258,15 +275,17 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
       </div>
 
       {error && (
-        <div className="mt-4 flex items-center justify-between rounded-btn border border-[#f0c9c0] bg-[#fdecec] px-3 py-2 text-sm text-error">
+        <div className="mt-4 flex items-center justify-between rounded-btn border border-border-strong bg-surface-strong px-3 py-2 text-sm text-error">
           <span>{error}</span>
           <button
             type="button"
             onClick={() => setError(null)}
-            className="ml-4 text-error hover:text-error"
+            className="ml-4 flex text-error"
             aria-label="닫기"
           >
-            ✕
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
           </button>
         </div>
       )}
@@ -358,22 +377,26 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
   );
 }
 
-function ProgressBar({ progress }: { progress: number | null }) {
-  if (progress === null) {
-    return <p className="text-sm text-muted-soft">할 일 없음</p>;
-  }
+function ProgressBar({
+  progress,
+  total,
+  done,
+}: {
+  progress: number | null;
+  total: number;
+  done: number;
+}) {
   return (
-    <div>
-      <div className="flex items-center justify-between text-sm text-muted">
-        <span>진행률</span>
-        <span>{progress}%</span>
-      </div>
-      <div className="mt-1 h-1.5 w-full rounded-full bg-surface-strong">
-        <div
-          className="h-1.5 rounded-full bg-primary transition-all"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+    <div className="flex items-center gap-3">
+      <ProgressRing value={progress} size={44} stroke={5} showLabel={false} />
+      {progress === null ? (
+        <span className="text-sm text-muted-soft">할 일 없음</span>
+      ) : (
+        <span className="text-sm text-body">
+          {total}개 중 <strong className="font-semibold">{done}개 완료</strong>
+          <span className="text-muted-soft"> · {progress}%</span>
+        </span>
+      )}
     </div>
   );
 }
@@ -473,26 +496,30 @@ function Column({
   showDate: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
+  const tone = COLUMN_TONE[status];
 
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-card border p-3 transition-colors ${
-        isOver ? 'border-primary bg-[#fff0f3]' : 'border-hairline bg-surface-soft'
+      className={`rounded-card border bg-canvas p-4 transition-colors ${
+        isOver ? 'border-primary bg-surface-strong' : 'border-hairline'
       }`}
     >
-      <h2 className="mb-3 text-sm font-semibold text-ink">
-        {label} ({tasks.length})
-      </h2>
+      <div className={`mb-3.5 flex items-baseline gap-2 border-b-2 ${tone.border} pb-2`}>
+        <h2 className={`text-sm font-bold tracking-tight ${tone.text}`}>{label}</h2>
+        <span className="text-xs tabular-nums text-muted-soft">{tasks.length}</span>
+      </div>
       <SortableContext
         items={tasks.map((t) => t._id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex min-h-[80px] flex-col gap-2">
-          {tasks.map((task) => (
+        <div className="flex min-h-[80px] flex-col gap-2.5">
+          {tasks.map((task, i) => (
             <TaskCard
               key={task._id}
               task={task}
+              column={status}
+              stickyIndex={i}
               onChangeStatus={onChangeStatus}
               onDelete={onDelete}
               onEdit={onEdit}
@@ -508,6 +535,8 @@ function Column({
 
 function TaskCard({
   task,
+  column,
+  stickyIndex,
   onChangeStatus,
   onDelete,
   onEdit,
@@ -515,6 +544,8 @@ function TaskCard({
   showDate,
 }: {
   task: Task;
+  column: TaskStatus;
+  stickyIndex: number;
   onChangeStatus: (taskId: string, newStatus: TaskStatus) => void;
   onDelete: (taskId: string) => void;
   onEdit: EditFn;
@@ -524,10 +555,20 @@ function TaskCard({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task._id });
 
+  const isDoing = column === 'doing';
+  const isDone = column === 'done';
+  const rotate = isDoing ? (stickyIndex % 2 === 0 ? -1.2 : 1) : 0;
+
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform:
+      [CSS.Transform.toString(transform), rotate ? `rotate(${rotate}deg)` : '']
+        .filter(Boolean)
+        .join(' ') || undefined,
     transition,
     opacity: isDragging ? 0.5 : 1,
+    ...(isDoing
+      ? { background: STICKY_TINTS[stickyIndex % STICKY_TINTS.length] }
+      : {}),
   };
 
   const [editing, setEditing] = useState(false);
@@ -598,22 +639,37 @@ function TaskCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="rounded-card border border-hairline bg-canvas p-2 transition-shadow hover:shadow-float"
+      className={
+        isDoing
+          ? 'rounded-[4px] border border-[color:rgba(58,47,38,0.12)] p-3 shadow-[0_3px_9px_rgba(58,47,38,0.10)]'
+          : 'rounded-card border border-hairline bg-canvas p-2.5 transition-shadow hover:shadow-float'
+      }
     >
       <div {...attributes} {...listeners} className="cursor-grab touch-none">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-medium text-ink">
-            {dayNum !== null && (
-              <span className="mr-1.5 inline-block rounded-full bg-surface-strong px-1.5 text-[11px] font-semibold text-muted">
-                {dayNum}
-              </span>
+          <p
+            className={`flex items-start gap-2 text-sm font-medium ${
+              isDone ? 'text-muted-soft' : 'text-ink'
+            }`}
+          >
+            {isDone && (
+              <PaperCheck checked readOnly label="완료됨" size={16} />
             )}
-            {task.title}
+            <span className={isDone ? 'line-through' : undefined}>
+              {dayNum !== null && (
+                <span className="mr-1.5 inline-block rounded-full bg-surface-strong px-1.5 text-[11px] font-semibold text-muted">
+                  {dayNum}
+                </span>
+              )}
+              {task.title}
+            </span>
           </p>
           {dueBadge && (
             <span
-              className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                dueBadge === '지연' ? 'bg-[#fdecec] text-error' : 'bg-amber-100 text-amber-700'
+              className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                dueBadge === '지연'
+                  ? 'border-border-strong bg-surface-strong text-error'
+                  : 'border-[color:var(--color-primary-disabled)] text-primary'
               }`}
             >
               {dueBadge}
@@ -628,7 +684,7 @@ function TaskCard({
         <select
           value={task.status}
           onChange={(e) => onChangeStatus(task._id, e.target.value as TaskStatus)}
-          className="w-full rounded-btn border border-hairline px-1 py-1 text-xs"
+          className="w-full rounded-btn border border-hairline bg-canvas px-1 py-1 text-xs"
           aria-label="상태 변경"
         >
           {COLUMNS.map((col) => (
@@ -640,20 +696,24 @@ function TaskCard({
         <button
           type="button"
           onClick={startEditing}
-          className="shrink-0 rounded-btn px-1.5 py-1 text-xs text-muted-soft hover:bg-surface-strong hover:text-ink"
+          className="flex shrink-0 rounded-btn p-1.5 text-muted-soft hover:bg-surface-strong hover:text-ink"
           aria-label="할 일 편집"
           title="편집"
         >
-          ✎
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+          </svg>
         </button>
         <button
           type="button"
           onClick={() => onDelete(task._id)}
-          className="shrink-0 rounded-btn px-1.5 py-1 text-xs text-muted-soft hover:bg-[#fdecec] hover:text-error"
+          className="flex shrink-0 rounded-btn p-1.5 text-muted-soft hover:bg-surface-strong hover:text-error"
           aria-label="할 일 삭제"
           title="삭제"
         >
-          ✕
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
+          </svg>
         </button>
       </div>
     </div>

@@ -44,7 +44,7 @@ export default function GoalEditForm({ goal }: { goal: YearlyGoal }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="whitespace-nowrap rounded-btn border border-ink px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-soft"
+        className="whitespace-nowrap rounded-btn border border-primary px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-surface-strong"
       >
         편집
       </button>
@@ -61,7 +61,7 @@ export default function GoalEditForm({ goal }: { goal: YearlyGoal }) {
         defaultValue={goal.title}
         required
         placeholder="계획 제목"
-        className="rounded-btn border border-hairline px-3 py-2.5 text-sm focus:border-ink focus:outline-none"
+        className="rounded-btn border border-hairline px-3 py-2.5 text-sm bg-canvas focus:border-primary focus:outline-none"
       />
       <input
         name="year"
@@ -69,14 +69,14 @@ export default function GoalEditForm({ goal }: { goal: YearlyGoal }) {
         defaultValue={goal.year}
         required
         aria-label="연도"
-        className="w-32 rounded-btn border border-hairline px-3 py-2.5 text-sm focus:border-ink focus:outline-none"
+        className="w-32 rounded-btn border border-hairline px-3 py-2.5 text-sm bg-canvas focus:border-primary focus:outline-none"
       />
       <textarea
         name="description"
         defaultValue={goal.description ?? ''}
         rows={3}
         placeholder="설명 (선택)"
-        className="rounded-btn border border-hairline px-3 py-2.5 text-sm focus:border-ink focus:outline-none"
+        className="rounded-btn border border-hairline px-3 py-2.5 text-sm bg-canvas focus:border-primary focus:outline-none"
       />
 
       {error && <p className="text-sm text-error">{error}</p>}

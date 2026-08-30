@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import BackLink from '@/components/ui/BackLink';
 import { getPlan } from '../actions';
 import { listTasksByPlan } from '@/app/(app)/tasks/actions';
 import TaskBoard from '@/components/board/TaskBoard';
@@ -30,23 +30,21 @@ export default async function PlanPage({
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <Link href="/plans" className="mb-4 inline-block text-sm text-ink hover:underline">
-        ‹ 주간 계획
-      </Link>
+    <main className="mx-auto max-w-5xl p-6 sm:p-8">
+      <BackLink href="/plans" label="주간 계획" />
 
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">{plan.title}</h1>
-          <p className="mt-2 text-muted">
-            {plan.weekStart} – {plan.weekEnd}
+          <h1 className="text-[26px] font-bold tracking-tight text-ink">{plan.title}</h1>
+          <p className="mt-1.5 text-sm text-muted-soft">
+            {plan.weekStart} &ndash; {plan.weekEnd}
           </p>
         </div>
         <div className="flex items-start gap-2">
           <form action={goToNextWeek}>
             <button
               type="submit"
-              className="whitespace-nowrap rounded-btn border border-ink px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-soft"
+              className="whitespace-nowrap rounded-btn border border-primary px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-surface-strong"
             >
               다음 주 계획 만들기
             </button>

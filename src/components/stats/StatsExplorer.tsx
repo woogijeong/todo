@@ -18,7 +18,9 @@ function FillMeter({ progress }: { progress: number | null }) {
         {Array.from({ length: FILL_SEGMENTS }, (_, i) => (
           <span
             key={i}
-            className={`h-3 flex-1 rounded-sm ${i < filled ? 'bg-primary' : 'bg-surface-strong'}`}
+            className={`h-3 flex-1 rounded-sm ${
+              i < filled ? 'bg-[color:var(--color-accent-sage)]' : 'bg-surface-strong'
+            }`}
           />
         ))}
       </div>
@@ -40,8 +42,8 @@ function Card({
 }) {
   const body = (
     <>
-      <p className="font-medium text-ink">{title}</p>
-      {subtitle && <p className="mt-0.5 text-xs text-muted">{subtitle}</p>}
+      <p className="font-semibold text-ink">{title}</p>
+      {subtitle && <p className="mt-0.5 text-xs text-muted-soft">{subtitle}</p>}
       <div className="mt-3">
         <FillMeter progress={progress} />
       </div>
@@ -49,14 +51,16 @@ function Card({
   );
 
   if (!onClick) {
-    return <div className="rounded-card border border-hairline p-4">{body}</div>;
+    return (
+      <div className="rounded-card border border-hairline bg-canvas p-4">{body}</div>
+    );
   }
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="rounded-card border border-hairline p-4 text-left transition-colors hover:border-border-strong hover:shadow-float"
+      className="rounded-card border border-hairline bg-canvas p-4 text-left transition-shadow hover:shadow-float"
     >
       {body}
     </button>
@@ -68,9 +72,12 @@ function BackLink({ label, onClick }: { label: string; onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="mb-4 text-sm text-ink hover:underline"
+      className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-primary"
     >
-      ‹ {label}
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <path d="m15 6-6 6 6 6" />
+      </svg>
+      {label}
     </button>
   );
 }

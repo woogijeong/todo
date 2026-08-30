@@ -26,15 +26,16 @@ export default async function GoalsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <h1 className="mb-6 text-2xl font-semibold text-ink">연간 계획</h1>
+    <main className="mx-auto max-w-2xl p-6 sm:p-8">
+      <h1 className="mb-1.5 text-[26px] font-bold tracking-tight text-ink">연간 계획</h1>
+      <p className="mb-6 text-sm text-muted-soft">한 해 동안 이루고 싶은 큰 목표</p>
 
       <form action={createGoalAction} className="mb-8 flex flex-wrap gap-2">
         <input
           name="title"
           placeholder="계획 제목"
           required
-          className="min-w-40 flex-1 rounded-btn border border-hairline px-3 py-2.5 text-sm focus:border-ink focus:outline-none"
+          className="min-w-40 flex-1 rounded-btn border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
         />
         <input
           name="year"
@@ -42,9 +43,9 @@ export default async function GoalsPage() {
           placeholder="연도"
           required
           defaultValue={new Date().getFullYear()}
-          className="w-28 rounded-btn border border-hairline px-3 py-2.5 text-sm focus:border-ink focus:outline-none"
+          className="w-28 rounded-btn border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
         />
-        <button type="submit" className="rounded-btn bg-primary px-5 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-active">
+        <button type="submit" className="rounded-btn bg-primary px-5 py-3 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-active">
           추가
         </button>
       </form>
@@ -52,15 +53,15 @@ export default async function GoalsPage() {
       {goals.length === 0 ? (
         <p className="text-muted">아직 등록된 연간 계획이 없습니다.</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="flex flex-col gap-2.5">
           {goals.map((goal) => (
             <li key={goal._id}>
               <Link
                 href={`/goals/${goal._id}`}
-                className="block rounded-card border border-hairline p-4 transition-shadow hover:shadow-float"
+                className="flex items-center justify-between gap-3 rounded-card border border-hairline bg-canvas p-4 transition-shadow hover:shadow-float"
               >
-                <span className="font-medium text-ink">{goal.title}</span>
-                <span className="ml-2 text-sm text-muted">{goal.year}</span>
+                <span className="font-semibold text-ink">{goal.title}</span>
+                <span className="shrink-0 text-sm text-muted-soft">{goal.year}</span>
               </Link>
             </li>
           ))}
