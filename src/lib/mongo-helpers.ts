@@ -21,13 +21,6 @@ export class DuplicateWeeklyPlanError extends Error {
   }
 }
 
-export class DuplicateMonthlyPlanError extends Error {
-  constructor() {
-    super('이미 같은 달에 대한 월간 계획이 존재합니다.');
-    this.name = 'DuplicateMonthlyPlanError';
-  }
-}
-
 /** Parses a client-supplied id string into an ObjectId, or returns null if invalid.
  *  Callers MUST check for null and respond with a not-found result instead of
  *  letting `new ObjectId(id)` throw a raw BSONError. */

@@ -31,26 +31,24 @@ function plansCollection(db: Db): Collection<WeeklyPlanDoc> {
 
 let indexesEnsured = false;
 
-/** Idempotent; safe to call on every write. The partial filter restricts the
- *  unique constraint to plans whose monthlyPlanId is an actual string — this
- *  is defense-in-depth for the month-linked case behind the app-level
- *  "one plan per week, per user" rule in createPlan/updatePlan below; it
- *  does NOT need to cover monthlyPlanId: null plans because that check
- *  already does. `userId` is the leading key so one user can never plant a
- *  row that collides with another user's plan for the same week. */
+/** Idempotent; safe to call on every write. Exactly one Weekly Plan per week
+ *  per user — `userId` is the leading key so one user can never plant a row
+ *  that collides with another user's plan for the same week. This is the
+ *  unconditional form of the "one plan per week" rule (the old partial index
+ *  keyed on monthlyPlanId is dropped along with the Monthly Plan layer). */
 async function ensureIndexes(db: Db): Promise<void> {
   if (indexesEnsured) return;
-  // Drop the pre-multi-user index if it's still around: its key set differs,
-  // so createIndex below would add a second index rather than replace it,
-  // leaving the un-scoped unique constraint (and its cross-user collision)
-  // in force.
-  await plansCollection(db)
-    .dropIndex('monthlyPlanId_1_weekStart_1')
-    .catch(() => {});
-  await plansCollection(db).createIndex(
-    { userId: 1, monthlyPlanId: 1, weekStart: 1 },
-    { unique: true, partialFilterExpression: { monthlyPlanId: { $type: 'string' } } }
-  );
+  // Drop the legacy indexes if still around: their key sets differ, so
+  // createIndex below would add a second index rather than replace them,
+  // leaving a stale unique constraint in force.
+  for (const legacy of [
+    'monthlyPlanId_1_weekStart_1',
+    'userId_1_monthlyPlanId_1_weekStart_1',
+    'yearlyGoalId_1_weekStart_1',
+  ]) {
+    await plansCollection(db).dropIndex(legacy).catch(() => {});
+  }
+  await plansCollection(db).createIndex({ userId: 1, weekStart: 1 }, { unique: true });
   indexesEnsured = true;
 }
 
@@ -59,7 +57,7 @@ function isDuplicateKeyError(error: unknown): boolean {
 }
 
 export async function createPlan(input: {
-  monthlyPlanId: string | null;
+  yearlyGoalId: string | null;
   title: string;
   weekStart?: string;
 }): Promise<WeeklyPlan> {
@@ -68,7 +66,7 @@ export async function createPlan(input: {
   const weekEnd = getWeekEnd(weekStart);
 
   const parsed = weeklyPlanInputSchema.safeParse({
-    monthlyPlanId: input.monthlyPlanId,
+    yearlyGoalId: input.yearlyGoalId,
     title: input.title,
     weekStart,
     weekEnd,
@@ -80,17 +78,14 @@ export async function createPlan(input: {
   const db = await getDb();
   await ensureIndexes(db);
 
-  // A Weekly Plan may only hang off a Monthly Plan the same user owns.
-  if (parsed.data.monthlyPlanId) {
-    await assertParentOwned(db, 'monthlyPlans', parsed.data.monthlyPlanId, userId, '월간 계획');
+  // A Weekly Plan may only link to a Yearly Goal the same user owns.
+  if (parsed.data.yearlyGoalId) {
+    await assertParentOwned(db, 'yearlyGoals', parsed.data.yearlyGoalId, userId, '연간 목표');
   }
 
-  // Exactly one plan per week for this user — regardless of which monthly
-  // plan (if any) it's linked to. The DB index above only enforces this for
-  // month-linked plans (partial index), so this app-level pre-check is the
-  // sole guard for month-less plans; it's also the primary guard overall
-  // since it runs before the insert attempt rather than relying on a
-  // duplicate-key error.
+  // Exactly one plan per week for this user. The DB unique index enforces
+  // this too; the app-level pre-check runs first so the common case returns
+  // a clean error rather than relying on a duplicate-key exception.
   const existingForWeek = await plansCollection(db).findOne({ weekStart, userId });
   if (existingForWeek) {
     throw new DuplicateWeeklyPlanError();
@@ -109,8 +104,9 @@ export async function createPlan(input: {
     const result = await plansCollection(db).insertOne(doc as unknown as WeeklyPlanDoc);
     revalidatePath('/plans');
     revalidatePath('/');
-    if (doc.monthlyPlanId) {
-      revalidatePath(`/monthly-plans/${doc.monthlyPlanId}`);
+    revalidatePath('/goals');
+    if (doc.yearlyGoalId) {
+      revalidatePath(`/goals/${doc.yearlyGoalId}`);
     }
     return toWeeklyPlan({ ...doc, _id: result.insertedId });
   } catch (error) {
@@ -154,8 +150,9 @@ export async function updatePlan(id: string, input: unknown): Promise<WeeklyPlan
     revalidatePath('/plans');
     revalidatePath(`/plans/${id}`);
     revalidatePath('/');
-    if (result.monthlyPlanId) {
-      revalidatePath(`/monthly-plans/${result.monthlyPlanId}`);
+    revalidatePath('/goals');
+    if (result.yearlyGoalId) {
+      revalidatePath(`/goals/${result.yearlyGoalId}`);
     }
     return toWeeklyPlan(result);
   } catch (error) {
@@ -186,8 +183,9 @@ export async function deletePlan(id: string): Promise<number> {
 
   revalidatePath('/plans');
   revalidatePath('/');
-  if (existing.monthlyPlanId) {
-    revalidatePath(`/monthly-plans/${existing.monthlyPlanId}`);
+  revalidatePath('/goals');
+  if (existing.yearlyGoalId) {
+    revalidatePath(`/goals/${existing.yearlyGoalId}`);
   }
 
   return deleted.deletedCount;

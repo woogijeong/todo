@@ -72,15 +72,11 @@ describe('progress calculation excludes unassigned tasks (US-009 AC5)', () => {
 
     const db = await getDb();
     const goalId = 'goal-a';
-    const monthlyPlanId = 'monthly-plan-a';
     const planId = 'plan-b';
 
     await db
-      .collection<{ _id: string; userId: string; yearlyGoalId: string }>('monthlyPlans')
-      .insertOne({ _id: monthlyPlanId, userId, yearlyGoalId: goalId });
-    await db
-      .collection<{ _id: string; userId: string; monthlyPlanId: string }>('weeklyPlans')
-      .insertOne({ _id: planId, userId, monthlyPlanId });
+      .collection<{ _id: string; userId: string; yearlyGoalId: string }>('weeklyPlans')
+      .insertOne({ _id: planId, userId, yearlyGoalId: goalId });
     await db.collection('tasks').insertMany([
       { userId, weeklyPlanId: planId, status: 'done' },
       { userId, weeklyPlanId: planId, status: 'done' },

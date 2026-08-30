@@ -1,5 +1,8 @@
 import { redirect } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
+import SeasonalBackground from '@/components/background/SeasonalBackground';
+import CelebrationOverlay from '@/components/celebration/CelebrationOverlay';
+import PageTransition from '@/components/layout/PageTransition';
 import { getSessionUser } from '@/lib/auth';
 import { listGoals } from './goals/actions';
 import { getYearlyGoalProgress } from '@/lib/progress';
@@ -31,8 +34,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-full">
+      <SeasonalBackground />
+      <CelebrationOverlay />
       <Sidebar login={user.login} avatarUrl={user.avatarUrl} topGoal={topGoal} />
-      <div className="min-w-0 flex-1">{children}</div>
+      <div className="min-w-0 flex-1">
+        {/* One shared width for every screen so the content column never jumps
+            between menus. */}
+        <main className="mx-auto max-w-5xl p-6 sm:p-8">
+          <PageTransition>{children}</PageTransition>
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -20,9 +20,11 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { updateTaskStatus } from '@/app/(app)/tasks/status-actions';
 import { createTask, deleteTask, updateTask } from '@/app/(app)/tasks/actions';
+import { checkGoalMilestone } from '@/app/(app)/plans/[id]/milestone-actions';
 import type { Task, TaskStatus } from '@/lib/schemas';
 import { getTodayString, getWeekDates, getWeekdayLabel } from '@/lib/date';
 import { getDueBadge } from '@/lib/due-status';
+import { celebrateOnce } from '@/lib/celebrate';
 import { notifyDueTask, requestNotificationPermission } from '@/lib/notify';
 import ProgressRing from '@/components/ui/ProgressRing';
 import PaperCheck from '@/components/ui/PaperCheck';
@@ -69,6 +71,7 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
   const [newTitle, setNewTitle] = useState('');
   const [newDueDate, setNewDueDate] = useState('');
   const [adding, setAdding] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(
     'default'
   );
@@ -149,17 +152,38 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
     const current = tasks.find((t) => t._id === taskId);
     if (!current || current.status === newStatus) return;
 
-    setTasks((prev) =>
-      prev.map((t) => (t._id === taskId ? { ...t, status: newStatus } : t))
+    const optimistic = previous.map((t) =>
+      t._id === taskId ? { ...t, status: newStatus } : t
     );
+    setTasks(optimistic);
     setError(null);
 
     try {
       const updated = await updateTaskStatus(taskId, newStatus);
-      setTasks((prev) => prev.map((t) => (t._id === taskId ? updated : t)));
+      const settled = optimistic.map((t) => (t._id === taskId ? updated : t));
+      setTasks(settled);
+      if (newStatus === 'done') void celebrateMilestones(settled);
     } catch {
       setTasks(previous);
       setError('상태 변경에 실패했습니다. 다시 시도해 주세요.');
+    }
+  }
+
+  // Fired after a task lands in "완료": celebrate once when all of today's due
+  // tasks on this plan are done ("하루 목표"), and once when the plan's yearly
+  // goal reaches 100%. Each is deduped by a localStorage marker.
+  async function celebrateMilestones(list: Task[]) {
+    const todays = list.filter((t) => t.dueDate === today);
+    if (todays.length > 0 && todays.every((t) => t.status === 'done')) {
+      celebrateOnce(`day.${today}`, true, 'day');
+    }
+    try {
+      const milestone = await checkGoalMilestone(planId);
+      if (milestone) {
+        celebrateOnce(`goal.${milestone.goalId}`, milestone.progress === 100, 'goal');
+      }
+    } catch {
+      /* milestone check is best-effort — never block the status change on it */
     }
   }
 
@@ -180,6 +204,7 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
       setTasks((prev) => [...prev, created]);
       setNewTitle('');
       setNewDueDate('');
+      setAddOpen(false);
     } catch {
       setError('할 일 추가에 실패했습니다. 다시 시도해 주세요.');
     } finally {
@@ -250,28 +275,105 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
     void changeStatus(taskId, newStatus);
   }
 
+  const doneCount = tasks.filter((t) => t.status === 'done').length;
+  const todayDueCount = tasks.filter(
+    (t) => getDueBadge(t.dueDate, t.status, today) === '오늘 마감'
+  ).length;
+
+  const addForm = (
+    <div className="mt-2.5">
+      {addOpen ? (
+        <form
+          onSubmit={addTask}
+          className="flex flex-col gap-1.5 rounded-btn border border-dashed border-border-strong p-2"
+        >
+          <input
+            type="text"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="새 할 일 제목"
+            aria-label="새 할 일 제목"
+            autoFocus
+            className="rounded-btn border border-hairline bg-canvas px-2 py-1.5 text-sm"
+          />
+          <input
+            type="date"
+            value={newDueDate}
+            onChange={(e) => setNewDueDate(e.target.value)}
+            onClick={(e) => e.currentTarget.showPicker?.()}
+            aria-label="기한"
+            className="rounded-btn border border-hairline bg-canvas px-2 py-1.5 text-xs"
+          />
+          <div className="flex gap-1.5">
+            <button
+              type="submit"
+              disabled={adding || !newTitle.trim()}
+              className="rounded-btn bg-primary px-3 py-1.5 text-xs font-medium text-on-primary transition-colors hover:bg-primary-active disabled:opacity-50"
+            >
+              추가
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddOpen(false);
+                setNewTitle('');
+                setNewDueDate('');
+              }}
+              className="rounded-btn border border-hairline px-3 py-1.5 text-xs text-muted hover:bg-surface-soft"
+            >
+              취소
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="w-full rounded-btn border border-dashed border-border-strong px-3 py-2 text-left text-sm text-muted-soft hover:bg-surface-soft hover:text-ink"
+        >
+          + 할 일 추가
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div className="mt-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex-1">
-          <ProgressBar
-            progress={progress}
-            total={tasks.length}
-            done={tasks.filter((t) => t.status === 'done').length}
-          />
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <div className="flex items-center gap-2.5">
+          <ProgressRing value={progress} size={40} stroke={5} showLabel={false} />
+          {progress === null ? (
+            <span className="text-sm text-muted-soft">할 일 없음</span>
+          ) : (
+            <span className="text-sm text-body">
+              {tasks.length}개 중 <strong className="font-semibold">{doneCount}개 완료</strong>
+              <span className="text-muted-soft"> · {progress}%</span>
+            </span>
+          )}
         </div>
-        {notifPermission === 'default' && (
-          <button
-            type="button"
-            onClick={enableNotifications}
-            className="whitespace-nowrap rounded-btn border border-hairline px-2 py-1 text-xs text-muted hover:bg-surface-soft"
-          >
-            마감 알림 켜기
-          </button>
+        {todayDueCount > 0 && (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--color-primary-disabled)] px-2.5 py-0.5 text-xs text-primary">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+            오늘 마감 {todayDueCount}건
+          </span>
         )}
-        {notifPermission === 'denied' && (
-          <span className="whitespace-nowrap text-xs text-muted-soft">알림이 차단되어 있습니다</span>
-        )}
+        <div className="ml-auto">
+          {notifPermission === 'default' && (
+            <button
+              type="button"
+              onClick={enableNotifications}
+              className="whitespace-nowrap rounded-btn border border-hairline px-2 py-1 text-xs text-muted hover:bg-surface-soft"
+            >
+              마감 알림 켜기
+            </button>
+          )}
+          {notifPermission === 'denied' && (
+            <span className="whitespace-nowrap text-xs text-muted-soft">알림이 차단되어 있습니다</span>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -314,33 +416,8 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
             )}
           </h2>
 
-          <form onSubmit={addTask} className="mt-3 flex flex-wrap items-center gap-2">
-            <input
-              type="text"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="새 할 일 제목"
-              aria-label="새 할 일 제목"
-              className="min-w-[8rem] flex-1 rounded-btn border border-hairline px-2 py-1.5 text-sm"
-            />
-            <input
-              type="date"
-              value={newDueDate}
-              onChange={(e) => setNewDueDate(e.target.value)}
-              onClick={(e) => e.currentTarget.showPicker?.()}
-              aria-label="기한"
-              className="rounded-btn border border-hairline px-2 py-1.5 text-sm"
-            />
-            <button
-              type="submit"
-              disabled={adding || !newTitle.trim()}
-              className="rounded-btn bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary-active disabled:opacity-50"
-            >
-              추가
-            </button>
-          </form>
-
           <DndContext
+            id="task-board"
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
@@ -357,6 +434,7 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
                   onEdit={editTask}
                   today={today}
                   showDate={selectedDay === null}
+                  footer={col.status === 'todo' ? addForm : undefined}
                 />
               ))}
             </div>
@@ -364,6 +442,9 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
         </div>
       </div>
 
+      {/* A due-date helper within this plan (tasks with no dueDate, or one
+          outside the visible week) — not an "unassigned task" feature; every
+          task here still belongs to this weekly plan. */}
       {selectedDay !== null && unscheduled.length > 0 && (
         <button
           type="button"
@@ -372,30 +453,6 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
         >
           날짜 미정 {unscheduled.length}개 — 전체 보기에서 날짜를 지정하세요 →
         </button>
-      )}
-    </div>
-  );
-}
-
-function ProgressBar({
-  progress,
-  total,
-  done,
-}: {
-  progress: number | null;
-  total: number;
-  done: number;
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <ProgressRing value={progress} size={44} stroke={5} showLabel={false} />
-      {progress === null ? (
-        <span className="text-sm text-muted-soft">할 일 없음</span>
-      ) : (
-        <span className="text-sm text-body">
-          {total}개 중 <strong className="font-semibold">{done}개 완료</strong>
-          <span className="text-muted-soft"> · {progress}%</span>
-        </span>
       )}
     </div>
   );
@@ -485,6 +542,7 @@ function Column({
   onEdit,
   today,
   showDate,
+  footer,
 }: {
   status: TaskStatus;
   label: string;
@@ -494,6 +552,7 @@ function Column({
   onEdit: EditFn;
   today: string;
   showDate: boolean;
+  footer?: ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const tone = COLUMN_TONE[status];
@@ -529,6 +588,7 @@ function Column({
           ))}
         </div>
       </SortableContext>
+      {footer}
     </div>
   );
 }
@@ -645,41 +705,48 @@ function TaskCard({
           : 'rounded-card border border-hairline bg-canvas p-2.5 transition-shadow hover:shadow-float'
       }
     >
-      <div {...attributes} {...listeners} className="cursor-grab touch-none">
-        <div className="flex items-start justify-between gap-2">
-          <p
-            className={`flex items-start gap-2 text-sm font-medium ${
-              isDone ? 'text-muted-soft' : 'text-ink'
+      <div className="flex items-start justify-between gap-2">
+        <div
+          className={`flex items-start gap-2 text-sm font-medium ${
+            isDone ? 'text-muted-soft' : 'text-ink'
+          }`}
+        >
+          {!isDoing && (
+            <PaperCheck
+              checked={isDone}
+              onChange={(checked) => onChangeStatus(task._id, checked ? 'done' : 'todo')}
+              label={`${task.title} 완료 여부`}
+              size={16}
+            />
+          )}
+          <span
+            {...attributes}
+            {...listeners}
+            className={`cursor-grab touch-none ${isDone ? 'text-muted-soft line-through' : ''}`}
+          >
+            {dayNum !== null && (
+              <span className="mr-1.5 inline-block rounded-full bg-surface-strong px-1.5 text-[11px] font-semibold text-muted">
+                {dayNum}
+              </span>
+            )}
+            {task.title}
+          </span>
+        </div>
+        {dueBadge && (
+          <span
+            className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+              dueBadge === '지연'
+                ? 'border-border-strong bg-surface-strong text-error'
+                : 'border-[color:var(--color-primary-disabled)] text-primary'
             }`}
           >
-            {isDone && (
-              <PaperCheck checked readOnly label="완료됨" size={16} />
-            )}
-            <span className={isDone ? 'line-through' : undefined}>
-              {dayNum !== null && (
-                <span className="mr-1.5 inline-block rounded-full bg-surface-strong px-1.5 text-[11px] font-semibold text-muted">
-                  {dayNum}
-                </span>
-              )}
-              {task.title}
-            </span>
-          </p>
-          {dueBadge && (
-            <span
-              className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-                dueBadge === '지연'
-                  ? 'border-border-strong bg-surface-strong text-error'
-                  : 'border-[color:var(--color-primary-disabled)] text-primary'
-              }`}
-            >
-              {dueBadge}
-            </span>
-          )}
-        </div>
-        {task.description && (
-          <p className="mt-1 text-xs text-muted">{task.description}</p>
+            {dueBadge}
+          </span>
         )}
       </div>
+      {task.description && (
+        <p className="mt-1 text-xs text-muted">{task.description}</p>
+      )}
       <div className="mt-2 flex items-center gap-1">
         <select
           value={task.status}

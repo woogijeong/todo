@@ -1,18 +1,13 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createPlan, listPlans } from './plans/actions';
-import { findOrCreateMonthlyPlanForMonth } from './monthly-plans/actions';
 import { listGoals } from './goals/actions';
 import { listTasksByPlan } from './tasks/actions';
-import {
-  getMonthWeekStarts,
-  getTodayString,
-  getWeekStart,
-  getWeekdayLabel,
-} from '@/lib/date';
+import { getTodayString, getWeekStart, getWeekdayLabel } from '@/lib/date';
 import { getYearlyGoalProgress } from '@/lib/progress';
-import { getStatsHierarchy } from '@/lib/stats';
 import DashboardPlanPanels from '@/components/dashboard/DashboardPlanPanels';
+import GoalCelebrationWatcher from '@/components/celebration/GoalCelebrationWatcher';
+import GaugeBar from '@/components/ui/GaugeBar';
 import SectionHeading from '@/components/ui/SectionHeading';
 import { requirePageUser } from '@/lib/auth';
 import type { TaskStatus } from '@/lib/schemas';
@@ -30,8 +25,7 @@ async function createThisWeekPlanAction() {
   'use server';
 
   const weekStart = getWeekStart(new Date());
-  const monthlyPlanId = await findOrCreateMonthlyPlanForMonth(weekStart.slice(0, 7));
-  const plan = await createPlan({ monthlyPlanId, title: '이번 주', weekStart });
+  const plan = await createPlan({ yearlyGoalId: null, title: '이번 주', weekStart });
   redirect(`/plans/${plan._id}`);
 }
 
@@ -73,11 +67,7 @@ export default async function Home() {
 
   const thisWeekStart = getWeekStart(new Date());
 
-  const [plans, goals, months] = await Promise.all([
-    listPlans(),
-    listGoals(),
-    getStatsHierarchy(),
-  ]);
+  const [plans, goals] = await Promise.all([listPlans(), listGoals()]);
 
   const currentPlan = plans.find((plan) => plan.weekStart === thisWeekStart) ?? null;
   const [currentPlanTasks, goalProgresses] = await Promise.all([
@@ -85,15 +75,11 @@ export default async function Home() {
     Promise.all(goals.map((goal) => getYearlyGoalProgress(goal._id))),
   ]);
 
+  const planGoal = currentPlan?.yearlyGoalId
+    ? goals.find((g) => g._id === currentPlan.yearlyGoalId) ?? null
+    : null;
+
   const todayString = getTodayString();
-
-  const thisMonth = todayString.slice(0, 7);
-  const thisMonthStat = months.find((m) => m.month === thisMonth) ?? null;
-  const thisMonthWeekStats = getMonthWeekStarts(thisMonth).map((weekStart) => ({
-    weekStart,
-    progress: thisMonthStat?.weeks.find((w) => w.weekStart === weekStart)?.progress ?? null,
-  }));
-
   const weekProgress = computeProgress(currentPlanTasks.map((t) => t.status));
   const todayDueCount = currentPlanTasks.filter(
     (t) => t.dueDate === todayString && t.status !== 'done'
@@ -105,8 +91,46 @@ export default async function Home() {
 
   const [, month, day] = todayString.split('-').map(Number);
 
+  const goalsCard = (
+    <section className="rounded-card border border-dashed border-border-strong bg-surface-soft p-5">
+      <div className="flex items-baseline justify-between">
+        <p className="text-sm font-bold text-body">연간 목표</p>
+        <Link href="/goals" className="text-xs text-muted hover:text-primary">
+          전체 보기
+        </Link>
+      </div>
+      {goals.length === 0 ? (
+        <p className="mt-3 text-xs text-muted">
+          <Link href="/goals" className="text-primary hover:underline">
+            목표 만들기
+          </Link>
+        </p>
+      ) : (
+        <ul className="mt-3 flex flex-col gap-3">
+          {goals.slice(0, 4).map((goal, index) => {
+            const p = goalProgresses[index];
+            return (
+              <li key={goal._id}>
+                <div className="flex items-baseline justify-between gap-2 text-xs">
+                  <span className="truncate text-body">{goal.title}</span>
+                  <span className="shrink-0 font-semibold tabular-nums text-ink">
+                    {p === null ? '–' : `${p}%`}
+                  </span>
+                </div>
+                <GaugeBar value={p} trackClassName="mt-1 h-1" />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+
   return (
-    <main className="mx-auto max-w-4xl p-6 sm:p-8">
+    <>
+      <GoalCelebrationWatcher
+        goals={goals.map((g, i) => ({ id: g._id, progress: goalProgresses[i] }))}
+      />
       <p className="text-sm text-muted-soft">
         {month}월 {day}일 {getWeekdayLabel(todayString)}요일
       </p>
@@ -137,7 +161,7 @@ export default async function Home() {
         />
       </div>
 
-      <div className="mt-6 flex flex-col gap-5">
+      <div className="mt-6">
         {currentPlan ? (
           <DashboardPlanPanels
             planHref={`/plans/${currentPlan._id}`}
@@ -145,104 +169,30 @@ export default async function Home() {
             weekRange={`${currentPlan.weekStart} ~ ${currentPlan.weekEnd}`}
             initialTasks={currentPlanTasks}
             todayString={todayString}
-          />
+            goalTitle={planGoal?.title ?? null}
+          >
+            {goalsCard}
+          </DashboardPlanPanels>
         ) : (
-          <section className="rounded-card border border-hairline bg-canvas p-6">
-            <SectionHeading>이번 주 계획</SectionHeading>
-            <p className="mt-4 text-sm text-muted">
-              {thisWeekStart} 주에 대한 계획이 아직 없습니다.
-            </p>
-            <form action={createThisWeekPlanAction} className="mt-3">
-              <button
-                type="submit"
-                className="rounded-btn bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-active"
-              >
-                이번 주 계획 만들기
-              </button>
-            </form>
-          </section>
-        )}
-
-        <section className="rounded-card border border-hairline bg-canvas p-6">
-          <SectionHeading
-            action={
-              <Link href="/goals" className="text-sm text-muted hover:text-primary">
-                전체 보기
-              </Link>
-            }
-          >
-            연간 계획
-          </SectionHeading>
-          {goals.length === 0 ? (
-            <p className="mt-4 text-sm text-muted">
-              등록된 연간 계획이 없습니다.{' '}
-              <Link href="/goals" className="text-primary hover:underline">
-                새로 만들기
-              </Link>
-            </p>
-          ) : (
-            <ul className="mt-4 flex flex-col gap-3.5">
-              {goals.map((goal, index) => {
-                const p = goalProgresses[index];
-                return (
-                  <li key={goal._id}>
-                    <Link href={`/goals/${goal._id}`} className="group block">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-sm text-ink group-hover:text-primary">
-                          <span className="font-medium">{goal.title}</span>
-                          <span className="ml-2 text-xs text-muted-soft">{goal.year}</span>
-                        </span>
-                        <span className="shrink-0 text-xs font-semibold tabular-nums text-body">
-                          {p === null ? '하위 계획 없음' : `${p}%`}
-                        </span>
-                      </div>
-                      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-surface-strong">
-                        <div
-                          className="h-full rounded-full bg-[color:var(--color-accent-sage)]"
-                          style={{ width: `${p ?? 0}%` }}
-                        />
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        <section className="rounded-card border border-hairline bg-canvas p-6">
-          <SectionHeading
-            action={
-              <Link href="/stats" className="text-sm text-muted hover:text-primary">
-                통계 보기
-              </Link>
-            }
-          >
-            이번 달 주간 완료율
-          </SectionHeading>
-          <div className="mt-5 flex items-end gap-4">
-            {thisMonthWeekStats.map((week, index) => (
-              <div key={week.weekStart} className="flex flex-1 flex-col items-center gap-2">
-                <span className="text-[11px] font-semibold tabular-nums text-muted">
-                  {week.progress === null ? '–' : `${week.progress}%`}
-                </span>
-                <div
-                  className="flex h-24 w-full items-end overflow-hidden rounded-md bg-surface-strong"
-                  title={`${index + 1}째 주 · ${
-                    week.progress === null ? '할 일 없음' : `${week.progress}%`
-                  }`}
+          <div className="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
+            <section className="rounded-card border border-hairline bg-canvas p-6">
+              <SectionHeading>이번 주 계획</SectionHeading>
+              <p className="mt-4 text-sm text-muted">
+                {thisWeekStart} 주에 대한 계획이 아직 없습니다.
+              </p>
+              <form action={createThisWeekPlanAction} className="mt-3">
+                <button
+                  type="submit"
+                  className="rounded-btn bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-active"
                 >
-                  <div
-                    className="w-full rounded-md bg-[color:var(--color-accent-sage)] transition-all"
-                    style={{ height: `${week.progress ?? 0}%` }}
-                  />
-                </div>
-                <span className="text-[11px] text-muted-soft">{index + 1}주</span>
-              </div>
-            ))}
+                  이번 주 계획 만들기
+                </button>
+              </form>
+            </section>
+            {goalsCard}
           </div>
-        </section>
+        )}
       </div>
-    </main>
+    </>
   );
 }

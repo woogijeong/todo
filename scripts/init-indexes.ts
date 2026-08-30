@@ -42,22 +42,18 @@ async function main(): Promise<void> {
 
   // Same spec as ensureIndexes() in src/app/(app)/plans/actions.ts — must
   // match exactly so creating it here and at runtime is idempotent, not a
-  // conflict. `userId` leads the key: uniqueness is per user, not global.
-  await db.collection('weeklyPlans').dropIndex('monthlyPlanId_1_weekStart_1').catch(() => {});
-  const weeklyPlansIndex = await db.collection('weeklyPlans').createIndex(
-    { userId: 1, monthlyPlanId: 1, weekStart: 1 },
-    { unique: true, partialFilterExpression: { monthlyPlanId: { $type: 'string' } } }
-  );
+  // conflict. `userId` leads the key: exactly one plan per week, per user.
+  for (const legacy of [
+    'monthlyPlanId_1_weekStart_1',
+    'userId_1_monthlyPlanId_1_weekStart_1',
+    'yearlyGoalId_1_weekStart_1',
+  ]) {
+    await db.collection('weeklyPlans').dropIndex(legacy).catch(() => {});
+  }
+  const weeklyPlansIndex = await db
+    .collection('weeklyPlans')
+    .createIndex({ userId: 1, weekStart: 1 }, { unique: true });
   console.log('Created index on weeklyPlans:', weeklyPlansIndex);
-
-  // Non-unique: the "one monthly plan per calendar month, per user" rule is
-  // enforced at the app level (see createMonthlyPlan in
-  // src/app/(app)/monthly-plans/actions.ts), not via a DB constraint — see
-  // that file's comment for why. This index just speeds up the month lookup.
-  const monthlyPlansIndex = await db
-    .collection('monthlyPlans')
-    .createIndex({ userId: 1, month: 1 });
-  console.log('Created index on monthlyPlans:', monthlyPlansIndex);
 }
 
 main()

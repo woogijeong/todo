@@ -33,7 +33,7 @@ export async function createNextWeekPlan(
   if (isNewPlan) {
     try {
       const newPlan = await createPlan({
-        monthlyPlanId: currentPlan.monthlyPlanId,
+        yearlyGoalId: currentPlan.yearlyGoalId,
         title: currentPlan.title,
         weekStart: nextWeekStart,
       });

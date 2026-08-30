@@ -60,3 +60,50 @@ body {
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Route-change reveal — the PageTransition wrapper is re-keyed per pathname,
+ * so this fires from the top on every menu switch. */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-in {
+  animation: page-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Under reduced-motion, keep only a gentle opacity fade — no slide. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes page-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .page-in {
+    animation-duration: 0.2s;
+  }
+}
+
+/* Goal / progress gauges sweep from empty to their value on mount. */
+.gauge-fill {
+  transition: width 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.gauge-ring {
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gauge-fill,
+  .gauge-ring {
+    transition-duration: 0.3s;
+  }
+}

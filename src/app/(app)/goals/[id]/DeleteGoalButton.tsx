@@ -6,6 +6,7 @@ import { deleteGoal } from '../actions';
 
 type Props = {
   goalId: string;
+  /** Number of Weekly Plans currently linked to this goal — they go goal-less on delete. */
   childPlanCount: number;
 };
 
@@ -17,8 +18,8 @@ export default function DeleteGoalButton({ goalId, childPlanCount }: Props) {
   async function handleDelete() {
     const confirmed = window.confirm(
       childPlanCount > 0
-        ? `이 계획을 삭제하면 ${childPlanCount}개의 월간 계획이 미지정 상태가 됩니다. 계속할까요?`
-        : '이 계획을 삭제할까요?'
+        ? `이 목표를 삭제하면 ${childPlanCount}개의 주간 계획이 목표 없음 상태가 됩니다. 계속할까요?`
+        : '이 목표를 삭제할까요?'
     );
     if (!confirmed) return;
 
@@ -41,7 +42,7 @@ export default function DeleteGoalButton({ goalId, childPlanCount }: Props) {
         disabled={pending}
         className="whitespace-nowrap rounded-btn border border-border-strong px-3 py-1.5 text-sm font-semibold text-error transition-colors hover:bg-surface-strong disabled:opacity-50"
       >
-        계획 삭제
+        목표 삭제
       </button>
       {error && <span className="text-xs text-error">{error}</span>}
     </div>

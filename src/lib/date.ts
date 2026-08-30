@@ -21,6 +21,25 @@ export function getTodayString(tz: string = APP_TZ): string {
 }
 
 /**
+ * The calendar date of `date` as 'YYYY-MM-DD' in `tz` (default Asia/Seoul).
+ * Like `getTodayString`, but for an arbitrary instant — used to bucket a
+ * task's `completedAt` timestamp into the day it happened, Seoul-time.
+ */
+export function toDateString(date: Date, tz: string = APP_TZ): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const year = parts.find((p) => p.type === 'year')!.value;
+  const month = parts.find((p) => p.type === 'month')!.value;
+  const day = parts.find((p) => p.type === 'day')!.value;
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Returns the Monday of the week containing `date`, as 'YYYY-MM-DD',
  * using the calendar date in `tz` (not the server's local time or naive UTC-offset math).
  */

@@ -12,7 +12,6 @@ import {
 } from '@/lib/schemas';
 import { parseObjectId, NotFoundError, ValidationError } from '@/lib/mongo-helpers';
 import { requireUserId } from '@/lib/auth';
-import { getPlan } from '../plans/actions';
 
 /** Mirrors the `TaskDoc` shape in `./actions.ts`; kept local so this file has
  *  no non-`getDb`/`getPlan` dependency on that module (see task ticket). */
@@ -78,17 +77,10 @@ export async function updateTaskStatus(taskId: string, newStatus: TaskStatus): P
   );
   if (!result) throw new NotFoundError('할 일');
 
-  let monthlyPlanId: string | null = null;
-  if (current.weeklyPlanId) {
-    const plan = await getPlan(current.weeklyPlanId);
-    monthlyPlanId = plan?.monthlyPlanId ?? null;
-  }
-
   const event: TaskEventInput = taskEventInputSchema.parse({
     userId,
     taskId,
     weeklyPlanId: current.weeklyPlanId,
-    monthlyPlanId,
     fromStatus: current.status,
     toStatus: newStatus,
     occurredAt: now,

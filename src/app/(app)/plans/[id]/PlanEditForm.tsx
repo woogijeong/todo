@@ -2,15 +2,20 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { updateMonthlyPlan } from '../actions';
-import type { MonthlyPlan, YearlyGoal } from '@/lib/schemas';
+import { updatePlan } from '../actions';
+import type { WeeklyPlan, YearlyGoal } from '@/lib/schemas';
 
 type Props = {
-  plan: MonthlyPlan;
+  plan: WeeklyPlan;
   goals: YearlyGoal[];
 };
 
-export default function MonthlyPlanEditForm({ plan, goals }: Props) {
+/**
+ * Where a Weekly Plan's title and its linked Yearly Goal are set. Low-frequency
+ * edit, so it stays a collapsed button until opened — mirrors the goal edit
+ * affordance. `weekStart` is not editable here.
+ */
+export default function PlanEditForm({ plan, goals }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -22,22 +27,20 @@ export default function MonthlyPlanEditForm({ plan, goals }: Props) {
 
     const formData = new FormData(e.currentTarget);
     const title = String(formData.get('title') ?? '').trim();
-    const month = String(formData.get('month') ?? '').trim();
     const goalId = String(formData.get('yearlyGoalId') ?? '').trim();
-    if (!title || !month) return;
+    if (!title) return;
 
     setPending(true);
     setError(null);
     try {
-      await updateMonthlyPlan(plan._id, {
+      await updatePlan(plan._id, {
         title,
-        month,
         yearlyGoalId: goalId === '' ? null : goalId,
       });
       setOpen(false);
       router.refresh();
     } catch {
-      setError('저장에 실패했습니다. 이미 그 달에 다른 계획이 있는지 확인해 주세요.');
+      setError('저장에 실패했습니다. 다시 시도해 주세요.');
     } finally {
       setPending(false);
     }
@@ -48,9 +51,9 @@ export default function MonthlyPlanEditForm({ plan, goals }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="whitespace-nowrap rounded-btn border border-primary px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-surface-strong"
+        className="whitespace-nowrap rounded-btn border border-hairline px-4 py-2 text-sm text-body transition-colors hover:bg-surface-soft"
       >
-        편집
+        주간 계획 편집
       </button>
     );
   }
@@ -58,31 +61,23 @@ export default function MonthlyPlanEditForm({ plan, goals }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-4 flex flex-col gap-3 rounded-card border border-hairline p-4"
+      className="flex w-64 flex-col gap-3 rounded-card border border-hairline bg-canvas p-4"
     >
       <input
         name="title"
         defaultValue={plan.title}
         required
-        placeholder="계획 제목"
-        className="rounded-btn border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
-      />
-      <input
-        name="month"
-        type="month"
-        defaultValue={plan.month}
-        required
-        aria-label="해당 월"
-        onClick={(e) => e.currentTarget.showPicker?.()}
-        className="rounded-btn border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
+        placeholder="주간 계획 제목"
+        aria-label="주간 계획 제목"
+        className="rounded-btn border border-hairline bg-page px-3 py-2 text-sm focus:border-primary focus:outline-none"
       />
       <select
         name="yearlyGoalId"
         defaultValue={plan.yearlyGoalId ?? ''}
-        aria-label="연간 계획 연동"
-        className="rounded-btn border border-hairline bg-canvas px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
+        aria-label="연간 목표 연결"
+        className="rounded-btn border border-hairline bg-page px-3 py-2 text-sm focus:border-primary focus:outline-none"
       >
-        <option value="">연간 계획 없음</option>
+        <option value="">연간 목표 없음</option>
         {goals.map((goal) => (
           <option key={goal._id} value={goal._id}>
             {goal.title} ({goal.year})
@@ -96,14 +91,14 @@ export default function MonthlyPlanEditForm({ plan, goals }: Props) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-btn bg-primary px-5 py-2.5 text-sm font-medium text-on-primary transition-colors hover:bg-primary-active disabled:opacity-50"
+          className="rounded-btn bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary-active disabled:opacity-50"
         >
           {pending ? '저장 중…' : '저장'}
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-btn border border-hairline px-4 py-2.5 text-sm text-muted hover:bg-surface-soft"
+          className="rounded-btn border border-hairline px-4 py-2 text-sm text-muted hover:bg-surface-soft"
         >
           취소
         </button>

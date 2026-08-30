@@ -45,46 +45,42 @@ async function weeklyPlanProgressFor(
   return computeProgress(tasks.map((t) => t.status));
 }
 
-async function monthlyPlanProgressFor(
-  userId: string,
-  monthlyPlanId: string
-): Promise<number | null> {
-  const db = await getDb();
-  const plans = await db
-    .collection<{ _id: unknown }>('weeklyPlans')
-    .find({ monthlyPlanId, userId }, { projection: { _id: 1 } })
-    .toArray();
-
-  const progresses = await Promise.all(
-    plans.map((p) => weeklyPlanProgressFor(userId, String(p._id)))
-  );
-  return computeYearlyAverage(progresses);
-}
-
 /** Weekly Plan progress, derived on read from the `tasks` collection — never stored,
  *  so it can never drift after a delete, re-parent, or manual DB edit. */
 export async function getWeeklyPlanProgress(weeklyPlanId: string): Promise<number | null> {
   return weeklyPlanProgressFor(await requireUserId(), weeklyPlanId);
 }
 
-/** Monthly Plan progress: unweighted average of its child Weekly Plans' derived progress. */
-export async function getMonthlyPlanProgress(monthlyPlanId: string): Promise<number | null> {
-  return monthlyPlanProgressFor(await requireUserId(), monthlyPlanId);
+/** Raw task counts for one Weekly Plan — for "M / N 완료" labels that need the
+ *  actual numbers, not just the derived percentage. */
+export async function getWeeklyPlanTaskCounts(
+  weeklyPlanId: string
+): Promise<{ total: number; done: number }> {
+  const userId = await requireUserId();
+  const db = await getDb();
+  const tasks = await db
+    .collection<{ status: 'todo' | 'doing' | 'done' }>('tasks')
+    .find({ weeklyPlanId, userId }, { projection: { status: 1 } })
+    .toArray();
+  return {
+    total: tasks.length,
+    done: tasks.filter((t) => t.status === 'done').length,
+  };
 }
 
-/** Yearly Goal progress: unweighted average of its child Monthly Plans' derived
- *  progress (which are themselves an average of their Weekly Plans' progress —
- *  Weekly Plans no longer link to a Yearly Goal directly, only via a Monthly Plan). */
+/** Yearly Goal progress: unweighted average of its child Weekly Plans' derived
+ *  progress. Weekly Plans link directly to a Yearly Goal; a plan with no linked
+ *  goal (`yearlyGoalId: null`) is in no goal's rollup. */
 export async function getYearlyGoalProgress(yearlyGoalId: string): Promise<number | null> {
   const userId = await requireUserId();
   const db = await getDb();
-  const monthlyPlans = await db
-    .collection<{ _id: unknown }>('monthlyPlans')
+  const plans = await db
+    .collection<{ _id: unknown }>('weeklyPlans')
     .find({ yearlyGoalId, userId }, { projection: { _id: 1 } })
     .toArray();
 
   const progresses = await Promise.all(
-    monthlyPlans.map((p) => monthlyPlanProgressFor(userId, String(p._id)))
+    plans.map((p) => weeklyPlanProgressFor(userId, String(p._id)))
   );
   return computeYearlyAverage(progresses);
 }

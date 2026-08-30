@@ -22,10 +22,10 @@ vi.mock('next/headers', () => ({
 
 /**
  * Regression test for a real bug the architect review caught: calling
- * `createNextWeekPlan` twice on a plan with no Monthly Plan (monthlyPlanId:
- * null) used to double-create both the plan and its tasks.
+ * `createNextWeekPlan` twice on a goal-less plan (yearlyGoalId: null) used to
+ * double-create both the plan and its tasks.
  */
-describe('createNextWeekPlan idempotency for month-less plans (US-016 AC3)', () => {
+describe('createNextWeekPlan idempotency for goal-less plans (US-016 AC3)', () => {
   let mongod: MongoMemoryServer;
 
   beforeAll(async () => {
@@ -59,7 +59,7 @@ describe('createNextWeekPlan idempotency for month-less plans (US-016 AC3)', () 
     const { createNextWeekPlan } = await import('./next-week-actions');
 
     const plan = await createPlan({
-      monthlyPlanId: null,
+      yearlyGoalId: null,
       title: '이번 주',
       weekStart: '2026-08-24',
     });
@@ -73,7 +73,7 @@ describe('createNextWeekPlan idempotency for month-less plans (US-016 AC3)', () 
 
     const allPlans = await listPlans();
     const nextWeekPlans = allPlans.filter(
-      (p) => p.monthlyPlanId === null && p.weekStart === '2026-08-31'
+      (p) => p.yearlyGoalId === null && p.weekStart === '2026-08-31'
     );
     expect(nextWeekPlans).toHaveLength(1);
 

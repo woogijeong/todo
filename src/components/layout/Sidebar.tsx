@@ -17,21 +17,11 @@ const NAV_LINKS: NavItem[] = [
   },
   {
     href: '/goals',
-    label: '연간 계획',
+    label: '연간 목표',
     icon: (
       <>
         <circle cx="12" cy="12" r="8.5" />
         <circle cx="12" cy="12" r="3.5" />
-      </>
-    ),
-  },
-  {
-    href: '/monthly-plans',
-    label: '월간 계획',
-    icon: (
-      <>
-        <rect x="3" y="4" width="18" height="17" rx="2" />
-        <path d="M3 9h18M8 2v4M16 2v4" />
       </>
     ),
   },

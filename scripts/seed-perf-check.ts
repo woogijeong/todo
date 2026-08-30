@@ -33,7 +33,7 @@ async function main(): Promise<void> {
   const { getDb } = await import('@/lib/mongodb');
   const { listTasksByPlan } = await import('@/app/(app)/tasks/actions');
   const { getWeeklyPlanProgress, getYearlyGoalProgress } = await import('@/lib/progress');
-  const { getStatsHierarchy } = await import('@/lib/stats');
+  const { getStatsSnapshot } = await import('@/lib/stats');
   const { getWeekStart, getWeekEnd } = await import('@/lib/date');
 
   const db = await getDb();
@@ -44,12 +44,9 @@ async function main(): Promise<void> {
     .createIndexes([{ key: { weeklyPlanId: 1, status: 1 } }, { key: { dueDate: 1 } }]);
   await db
     .collection('weeklyPlans')
-    .createIndex(
-      { monthlyPlanId: 1, weekStart: 1 },
-      { unique: true, partialFilterExpression: { monthlyPlanId: { $type: 'string' } } }
-    );
+    .createIndex({ userId: 1, weekStart: 1 }, { unique: true });
 
-  console.log('Seeding: 3 yearly goals, 4 monthly plans, ~12 weekly plans, 2000 tasks, ~2000 taskEvents...');
+  console.log('Seeding: 3 yearly goals, ~12 weekly plans, 2000 tasks, ~2000 taskEvents...');
   const now = new Date();
 
   const goalIds: string[] = [];
@@ -64,34 +61,15 @@ async function main(): Promise<void> {
     goalIds.push(result.insertedId.toString());
   }
 
-  // Yearly Goal -> Monthly Plan -> Weekly Plan -> Task. One monthly plan per
-  // calendar month covering the 12 seeded weeks (~3 months back), some
-  // intentionally goal-less.
-  const monthlyPlanIdByMonth = new Map<string, string>();
-  const monthlyPlanIds: string[] = [];
-  for (let m = 0; m < 4; m++) {
-    const month = getWeekStart(new Date(now.getTime() - m * 30 * 24 * 60 * 60 * 1000)).slice(0, 7);
-    if (monthlyPlanIdByMonth.has(month)) continue;
-    const yearlyGoalId = m % 4 === 0 ? null : goalIds[m % 3]; // some plans intentionally goal-less
-    const result = await db.collection('monthlyPlans').insertOne({
-      yearlyGoalId,
-      title: `${month} 계획`,
-      month,
-      createdAt: now,
-      updatedAt: now,
-      schemaVersion: 1,
-    });
-    monthlyPlanIdByMonth.set(month, result.insertedId.toString());
-    monthlyPlanIds.push(result.insertedId.toString());
-  }
-
+  // Yearly Goal -> Weekly Plan -> Task. Some weekly plans intentionally
+  // goal-less (yearlyGoalId: null).
   const planIds: string[] = [];
   for (let w = 0; w < 12; w++) {
     const weekStart = getWeekStart(new Date(now.getTime() - w * 7 * 24 * 60 * 60 * 1000));
     const weekEnd = getWeekEnd(weekStart);
-    const monthlyPlanId = monthlyPlanIdByMonth.get(weekStart.slice(0, 7)) ?? null;
+    const yearlyGoalId = w % 4 === 0 ? null : goalIds[w % 3];
     const result = await db.collection('weeklyPlans').insertOne({
-      monthlyPlanId,
+      yearlyGoalId,
       title: `주간 계획 ${w + 1}`,
       weekStart,
       weekEnd,
@@ -107,15 +85,17 @@ async function main(): Promise<void> {
   const taskDocs = [];
   const eventDocs = [];
   for (let i = 0; i < TASK_COUNT; i++) {
-    const weeklyPlanId = i % 50 === 0 ? null : planIds[i % planIds.length]; // a few unassigned
+    const weeklyPlanId = planIds[i % planIds.length];
     const status = statuses[i % 3];
-    const plan = weeklyPlanId ? planIds.indexOf(weeklyPlanId) : -1;
-    const monthlyPlanId = plan >= 0 ? (plan % 4 === 0 ? null : monthlyPlanIds[plan % monthlyPlanIds.length]) : null;
 
     taskDocs.push({
       weeklyPlanId,
       title: `할 일 ${i + 1}`,
       status,
+      completedAt:
+        status === 'done'
+          ? new Date(now.getTime() - (i % 90) * 24 * 60 * 60 * 1000)
+          : null,
       createdAt: now,
       updatedAt: now,
       schemaVersion: 1,
@@ -125,7 +105,6 @@ async function main(): Promise<void> {
       eventDocs.push({
         taskId: `seed-${i}`,
         weeklyPlanId,
-        monthlyPlanId,
         fromStatus: 'todo',
         toStatus: status,
         occurredAt: new Date(now.getTime() - (i % 90) * 24 * 60 * 60 * 1000),
@@ -148,7 +127,7 @@ async function main(): Promise<void> {
   await time('board query: listTasksByPlan(one plan id)', () => listTasksByPlan(planIds[0]));
   await time('progress: getWeeklyPlanProgress(one plan)', () => getWeeklyPlanProgress(planIds[0]));
   await time('progress: getYearlyGoalProgress(one goal)', () => getYearlyGoalProgress(goalIds[0]));
-  await time('stats: getStatsHierarchy (month -> week -> day, all plans)', () => getStatsHierarchy());
+  await time('stats: getStatsSnapshot (12 weeks + 30 days + goal totals)', () => getStatsSnapshot());
 
   // The app's own MongoClient (getDb()/clientPromise in src/lib/mongodb.ts)
   // keeps an open connection pool alive for the life of the process — that's

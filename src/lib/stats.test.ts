@@ -1,53 +1,81 @@
 import { describe, expect, it } from 'vitest';
-import { buildMonthHierarchy, buildWeekStat, type WeekStat } from './stats';
+import {
+  aggregateGoalCumulative,
+  bucketDailyCompletions,
+  buildWeeklyCompletionSeries,
+} from './stats';
+import type { TaskStatus } from './schemas';
 
-describe('buildWeekStat', () => {
-  it('computes week progress from all tasks and day progress from only that day\'s tasks', () => {
-    const plan = { _id: 'p1', title: '이번 주', weekStart: '2026-08-24', weekEnd: '2026-08-30' };
-    const tasks = [
-      { status: 'done' as const, dueDate: '2026-08-24' },
-      { status: 'todo' as const, dueDate: '2026-08-24' },
-      { status: 'done' as const, dueDate: '2026-08-26' },
-      { status: 'todo' as const }, // no dueDate: counts toward the week, no day
-    ];
+const S = (n: number, done: number): TaskStatus[] => [
+  ...Array<TaskStatus>(done).fill('done'),
+  ...Array<TaskStatus>(n - done).fill('todo'),
+];
 
-    const week = buildWeekStat(plan, tasks);
+describe('buildWeeklyCompletionSeries', () => {
+  it('keeps only the most recent 12 weeks, oldest first, and flags the current week', () => {
+    const clean = Array.from({ length: 15 }, (_, i) => ({
+      planId: `p${i}`,
+      weekStart: `2026-01-${String(i + 1).padStart(2, '0')}`,
+      statuses: S(4, Math.min(i, 4)),
+    }));
 
-    expect(week.progress).toBe(50); // 2 done / 4 total
-    expect(week.days).toHaveLength(7);
-    expect(week.days[0]).toMatchObject({ date: '2026-08-24', weekday: '월', progress: 50 }); // 1/2
-    expect(week.days[2]).toMatchObject({ date: '2026-08-26', weekday: '수', progress: 100 }); // 1/1
-    expect(week.days[1].progress).toBeNull(); // no tasks due 2026-08-25
+    const series = buildWeeklyCompletionSeries(clean, '2026-01-15');
+
+    expect(series).toHaveLength(12);
+    expect(series[0].weekStart).toBe('2026-01-04'); // weeks 1..3 dropped
+    expect(series[series.length - 1].weekStart).toBe('2026-01-15');
+    expect(series[series.length - 1].isCurrent).toBe(true);
+    expect(series[0].isCurrent).toBe(false);
   });
 
-  it('returns null progress for a week with no tasks', () => {
-    const plan = { _id: 'p2', title: '빈 주', weekStart: '2026-09-07', weekEnd: '2026-09-13' };
-    const week = buildWeekStat(plan, []);
-    expect(week.progress).toBeNull();
-    expect(week.days.every((d) => d.progress === null)).toBe(true);
+  it('reports null progress for a plan with no tasks', () => {
+    const series = buildWeeklyCompletionSeries(
+      [{ planId: 'p1', weekStart: '2026-02-02', statuses: [] }],
+      '2026-02-09'
+    );
+    expect(series[0].progress).toBeNull();
   });
 });
 
-describe('buildMonthHierarchy', () => {
-  it('groups weeks by the month of their weekStart and averages non-null week progress', () => {
-    const weeks: WeekStat[] = [
-      { planId: 'a', title: 'A', weekStart: '2026-08-24', weekEnd: '2026-08-30', progress: 50, days: [] },
-      { planId: 'b', title: 'B', weekStart: '2026-08-03', weekEnd: '2026-08-09', progress: null, days: [] },
-      { planId: 'c', title: 'C', weekStart: '2026-09-07', weekEnd: '2026-09-13', progress: 80, days: [] },
+describe('bucketDailyCompletions', () => {
+  it('produces 30 day buckets ending on today, counting per date', () => {
+    const buckets = bucketDailyCompletions(
+      ['2026-08-30', '2026-08-30', '2026-08-28', '2026-07-01'],
+      '2026-08-30'
+    );
+    expect(buckets).toHaveLength(30);
+    expect(buckets[29]).toMatchObject({ date: '2026-08-30', count: 2 });
+    expect(buckets[27]).toMatchObject({ date: '2026-08-28', count: 1 });
+    // 2026-07-01 is outside the 30-day window -> ignored
+    expect(buckets.reduce((s, b) => s + b.count, 0)).toBe(3);
+  });
+});
+
+describe('aggregateGoalCumulative', () => {
+  const titles = new Map([
+    ['g1', '사이드 프로젝트'],
+    ['g2', '책 읽기'],
+  ]);
+
+  it('groups by goal, sorts named goals by count desc, and puts 목표 없음 last', () => {
+    const rows = [
+      { yearlyGoalId: 'g1' },
+      { yearlyGoalId: 'g1' },
+      { yearlyGoalId: 'g2' },
+      { yearlyGoalId: null },
+      { yearlyGoalId: 'unknown-id' }, // not in titles -> 목표 없음 bucket
     ];
+    const result = aggregateGoalCumulative(rows, titles);
 
-    const months = buildMonthHierarchy(weeks);
-
-    expect(months).toHaveLength(2);
-    expect(months[0]).toMatchObject({ month: '2026-08', label: '2026년 8월', progress: 50 });
-    expect(months[0].weeks.map((w) => w.weekStart)).toEqual(['2026-08-03', '2026-08-24']);
-    expect(months[1]).toMatchObject({ month: '2026-09', label: '2026년 9월', progress: 80 });
+    expect(result.map((r) => [r.title, r.count])).toEqual([
+      ['사이드 프로젝트', 2],
+      ['책 읽기', 1],
+      ['목표 없음', 2],
+    ]);
   });
 
-  it('returns a null month progress when every week in it is null', () => {
-    const weeks: WeekStat[] = [
-      { planId: 'a', title: 'A', weekStart: '2026-08-24', weekEnd: '2026-08-30', progress: null, days: [] },
-    ];
-    expect(buildMonthHierarchy(weeks)[0].progress).toBeNull();
+  it('omits the 목표 없음 row when every completion maps to a known goal', () => {
+    const result = aggregateGoalCumulative([{ yearlyGoalId: 'g1' }], titles);
+    expect(result).toEqual([{ goalId: 'g1', title: '사이드 프로젝트', count: 1 }]);
   });
 });

@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 /**
- * Zod schemas for the 4 MongoDB collections defined in
- * docs/.omc/plans/todo-app-plan.md section 2.
+ * Zod schemas for the MongoDB collections. Weekly Plans link directly to a
+ * Yearly Goal (the former Monthly Plan layer was removed).
  *
  * `_id` and other ObjectId-typed references are represented as plain
  * strings at this validation boundary because they arrive as strings
@@ -79,40 +79,13 @@ export const yearlyGoalInputSchema = yearlyGoalSchema.omit({
 export type YearlyGoalInput = z.infer<typeof yearlyGoalInputSchema>;
 
 // ---------------------------------------------------------------------------
-// monthlyPlans
-// ---------------------------------------------------------------------------
-
-const monthOnlyString = z.string().regex(/^\d{4}-\d{2}$/, "Expected YYYY-MM");
-
-export const monthlyPlanSchema = z.object({
-  _id: objectIdString,
-  userId,
-  yearlyGoalId: objectIdString.nullable(),
-  title,
-  month: monthOnlyString,
-  createdAt: z.date(),
-  updatedAt: z.date(),
-  schemaVersion: z.literal(1),
-});
-export type MonthlyPlan = z.infer<typeof monthlyPlanSchema>;
-
-export const monthlyPlanInputSchema = monthlyPlanSchema.omit({
-  _id: true,
-  userId: true,
-  createdAt: true,
-  updatedAt: true,
-  schemaVersion: true,
-});
-export type MonthlyPlanInput = z.infer<typeof monthlyPlanInputSchema>;
-
-// ---------------------------------------------------------------------------
 // weeklyPlans
 // ---------------------------------------------------------------------------
 
 export const weeklyPlanSchema = z.object({
   _id: objectIdString,
   userId,
-  monthlyPlanId: objectIdString.nullable(),
+  yearlyGoalId: objectIdString.nullable(),
   title,
   weekStart: dateOnlyString,
   weekEnd: dateOnlyString,
@@ -169,7 +142,6 @@ export const taskEventSchema = z.object({
   userId,
   taskId: objectIdString,
   weeklyPlanId: objectIdString.nullable(),
-  monthlyPlanId: objectIdString.nullable(),
   fromStatus: z.string().nullable(),
   toStatus: taskStatus,
   occurredAt: z.date(),

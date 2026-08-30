@@ -2,9 +2,9 @@
  * One-shot migration: assign every pre-auth document an owner.
  *
  * Before GitHub OAuth the app had a single implicit user, so the existing
- * yearlyGoals / monthlyPlans / weeklyPlans / tasks / taskEvents documents
- * have no `userId`. This backfills them with the `users._id` of the GitHub
- * account named by `SEED_OWNER_GITHUB_LOGIN`.
+ * yearlyGoals / weeklyPlans / tasks / taskEvents documents have no `userId`.
+ * This backfills them with the `users._id` of the GitHub account named by
+ * `SEED_OWNER_GITHUB_LOGIN`.
  *
  * Prerequisite: that GitHub account must have logged in at least once (so a
  * `users` row exists). Run:
@@ -18,7 +18,6 @@ import { getDb, clientPromise } from '@/lib/mongodb';
 
 const COLLECTIONS = [
   'yearlyGoals',
-  'monthlyPlans',
   'weeklyPlans',
   'tasks',
   'taskEvents',

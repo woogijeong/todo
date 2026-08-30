@@ -30,8 +30,8 @@ function revalidateTaskViews(weeklyPlanId: string | null | undefined): void {
 /**
  * `weeklyPlanId` is stored as a plain string (not a real ObjectId reference),
  * matching `Task.weeklyPlanId: string | null` from the Zod schema exactly and
- * matching how weeklyPlans.monthlyPlanId is stored (see src/app/plans/actions.ts,
- * src/app/monthly-plans/actions.ts). This keeps every other module's queries/orphaning
+ * matching how weeklyPlans.yearlyGoalId is stored (see src/app/(app)/plans/actions.ts,
+ * src/app/(app)/goals/actions.ts). This keeps every other module's queries/orphaning
  * updates (`{ weeklyPlanId: someIdString }`) correct without needing to know
  * this collection secretly stores an ObjectId here. `ObjectId.isValid()` is
  * still used to validate the string looks like a real id before accepting it.

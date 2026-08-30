@@ -1,10 +1,14 @@
+import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import BackLink from '@/components/ui/BackLink';
 import { getPlan } from '../actions';
+import { listGoals, getGoal } from '../../goals/actions';
+import { getYearlyGoalProgress } from '@/lib/progress';
 import { listTasksByPlan } from '@/app/(app)/tasks/actions';
 import TaskBoard from '@/components/board/TaskBoard';
 import { createNextWeekPlan } from './next-week-actions';
 import DeletePlanButton from './DeletePlanButton';
+import PlanEditForm from './PlanEditForm';
 import { requirePageUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +25,12 @@ export default async function PlanPage({
 
   if (!plan) notFound();
 
-  const tasks = await listTasksByPlan(id);
+  const [tasks, goals, goal, goalProgress] = await Promise.all([
+    listTasksByPlan(id),
+    listGoals(),
+    plan.yearlyGoalId ? getGoal(plan.yearlyGoalId) : Promise.resolve(null),
+    plan.yearlyGoalId ? getYearlyGoalProgress(plan.yearlyGoalId) : Promise.resolve(null),
+  ]);
 
   async function goToNextWeek() {
     'use server';
@@ -30,8 +39,25 @@ export default async function PlanPage({
   }
 
   return (
-    <main className="mx-auto max-w-5xl p-6 sm:p-8">
-      <BackLink href="/plans" label="주간 계획" />
+    <>
+      {goal ? (
+        <div className="mb-5 flex items-center gap-2 text-sm text-muted-soft">
+          <span>연간 목표</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+            <path d="m9 6 6 6-6 6" />
+          </svg>
+          <Link href={`/goals/${goal._id}`} className="text-body hover:text-primary">
+            {goal.title}
+          </Link>
+          {goalProgress !== null && (
+            <span className="rounded-full border border-dashed border-border-strong px-2 text-xs text-[color:var(--color-accent-sage)]">
+              {goalProgress}%
+            </span>
+          )}
+        </div>
+      ) : (
+        <BackLink href="/plans" label="주간 계획" />
+      )}
 
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -41,6 +67,7 @@ export default async function PlanPage({
           </p>
         </div>
         <div className="flex items-start gap-2">
+          <PlanEditForm plan={plan} goals={goals} />
           <form action={goToNextWeek}>
             <button
               type="submit"
@@ -53,6 +80,6 @@ export default async function PlanPage({
         </div>
       </div>
       <TaskBoard planId={id} initialTasks={tasks} weekStart={plan.weekStart} />
-    </main>
+    </>
   );
 }

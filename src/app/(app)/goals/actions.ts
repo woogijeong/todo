@@ -8,7 +8,7 @@ import { parseObjectId, NotFoundError, ValidationError } from '@/lib/mongo-helpe
 import { requireUserId } from '@/lib/auth';
 
 const COLLECTION = 'yearlyGoals';
-const MONTHLY_PLANS_COLLECTION = 'monthlyPlans';
+const WEEKLY_PLANS_COLLECTION = 'weeklyPlans';
 
 type YearlyGoalDoc = {
   _id: ObjectId;
@@ -75,7 +75,7 @@ export async function createGoal(input: unknown): Promise<YearlyGoal> {
 
   revalidatePath('/goals');
   revalidatePath('/');
-  revalidatePath('/monthly-plans');
+  revalidatePath('/plans');
   return toYearlyGoal({ _id: result.insertedId, ...doc });
 }
 
@@ -100,11 +100,11 @@ export async function updateGoal(id: string, input: unknown): Promise<YearlyGoal
   revalidatePath('/goals');
   revalidatePath(`/goals/${id}`);
   revalidatePath('/');
-  revalidatePath('/monthly-plans');
+  revalidatePath('/plans');
   return toYearlyGoal(result);
 }
 
-export async function deleteGoal(id: string): Promise<{ orphanedMonthlyPlanCount: number }> {
+export async function deleteGoal(id: string): Promise<{ orphanedWeeklyPlanCount: number }> {
   const userId = await requireUserId();
   const objectId = parseObjectId(id);
   if (!objectId) throw new NotFoundError('연간 계획');
@@ -114,20 +114,19 @@ export async function deleteGoal(id: string): Promise<{ orphanedMonthlyPlanCount
   const existing = await db.collection<YearlyGoalDoc>(COLLECTION).findOne({ _id: objectId, userId });
   if (!existing) throw new NotFoundError('연간 계획');
 
-  // Orphan, don't cascade-delete: children keep existing but lose their parent reference.
-  // monthlyPlans.yearlyGoalId is stored as the string form of the goal's _id (schema boundary
-  // represents ObjectId refs as strings), so we match on the string id, not an ObjectId.
-  // Weekly Plans are one level further removed (they link to a Monthly Plan, not directly
-  // to a Yearly Goal), so deleting a goal no longer touches weeklyPlans at all.
+  // Orphan, don't cascade-delete: child Weekly Plans keep existing but go
+  // goal-less. weeklyPlans.yearlyGoalId is stored as the string form of the
+  // goal's _id (the schema boundary represents ObjectId refs as strings), so
+  // we match on the string id, not an ObjectId.
   const orphanResult = await db
-    .collection(MONTHLY_PLANS_COLLECTION)
-    .updateMany({ yearlyGoalId: id, userId }, { $set: { yearlyGoalId: null } });
+    .collection(WEEKLY_PLANS_COLLECTION)
+    .updateMany({ yearlyGoalId: id, userId }, { $set: { yearlyGoalId: null, updatedAt: new Date() } });
 
   await db.collection(COLLECTION).deleteOne({ _id: objectId, userId });
 
   revalidatePath('/goals');
   revalidatePath('/');
-  revalidatePath('/monthly-plans');
+  revalidatePath('/plans');
 
-  return { orphanedMonthlyPlanCount: orphanResult.modifiedCount };
+  return { orphanedWeeklyPlanCount: orphanResult.modifiedCount };
 }

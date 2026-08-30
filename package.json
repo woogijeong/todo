@@ -10,6 +10,7 @@
     "test": "vitest run",
     "init-indexes": "tsx scripts/init-indexes.ts",
     "migrate-user-id": "tsx scripts/migrate-add-user-id.ts",
+    "migrate-drop-monthly": "tsx --env-file=.env.local scripts/migrate-drop-monthly-plans.ts",
     "seed-perf-check": "tsx scripts/seed-perf-check.ts"
   },
   "dependencies": {

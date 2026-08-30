@@ -53,7 +53,6 @@ describe('per-user data isolation (US-007)', () => {
   it("keeps each user's goals, plans, tasks and progress fully separate", async () => {
     const { createGoal, listGoals } = await import('@/app/(app)/goals/actions');
     const { createPlan, listPlans } = await import('@/app/(app)/plans/actions');
-    const { createMonthlyPlan } = await import('@/app/(app)/monthly-plans/actions');
     const { createTask, listTasksByPlan, updateTask, deleteTask } = await import(
       '@/app/(app)/tasks/actions'
     );
@@ -62,14 +61,14 @@ describe('per-user data isolation (US-007)', () => {
     // --- Alice creates a goal, a plan and two tasks (one done) ---
     currentToken = tokenA;
     await createGoal({ title: 'Alice 목표', year: 2026 });
-    const alicePlan = await createPlan({ monthlyPlanId: null, title: 'Alice 주', weekStart: '2026-08-24' });
+    const alicePlan = await createPlan({ yearlyGoalId: null, title: 'Alice 주', weekStart: '2026-08-24' });
     await createTask({ weeklyPlanId: alicePlan._id, title: 'A1', status: 'done' });
     await createTask({ weeklyPlanId: alicePlan._id, title: 'A2', status: 'todo' });
 
     // --- Bob creates his own, same week ---
     currentToken = tokenB;
     await createGoal({ title: 'Bob 목표', year: 2026 });
-    const bobPlan = await createPlan({ monthlyPlanId: null, title: 'Bob 주', weekStart: '2026-08-24' });
+    const bobPlan = await createPlan({ yearlyGoalId: null, title: 'Bob 주', weekStart: '2026-08-24' });
     await createTask({ weeklyPlanId: bobPlan._id, title: 'B1', status: 'todo' });
 
     // Bob only sees his own.
@@ -95,12 +94,12 @@ describe('per-user data isolation (US-007)', () => {
     ).rejects.toThrow();
     const [bobTask] = await listTasksByPlan(bobPlan._id);
     await expect(updateTask(bobTask._id, { weeklyPlanId: alicePlan._id })).rejects.toThrow();
-    // Bob cannot hang a Weekly Plan off Alice's Monthly Plan either.
+    // Bob cannot link a Weekly Plan to Alice's Yearly Goal either.
     currentToken = tokenA;
-    const aliceMonthly = await createMonthlyPlan({ yearlyGoalId: null, title: 'Alice 월', month: '2026-09' });
+    const [aliceGoal] = await listGoals();
     currentToken = tokenB;
     await expect(
-      createPlan({ monthlyPlanId: aliceMonthly._id, title: 'x', weekStart: '2026-09-07' })
+      createPlan({ yearlyGoalId: aliceGoal._id, title: 'x', weekStart: '2026-09-07' })
     ).rejects.toThrow();
 
     // Alice still sees exactly her data and correct 50% progress (1 done / 2).
