@@ -162,28 +162,36 @@ export default function TaskBoard({ planId, initialTasks, weekStart }: Props) {
       const updated = await updateTaskStatus(taskId, newStatus);
       const settled = optimistic.map((t) => (t._id === taskId ? updated : t));
       setTasks(settled);
-      if (newStatus === 'done') void celebrateMilestones(settled);
+      celebrateDayMilestone(settled);
+      if (newStatus === 'done') void celebrateGoalMilestone();
     } catch {
       setTasks(previous);
       setError('상태 변경에 실패했습니다. 다시 시도해 주세요.');
     }
   }
 
-  // Fired after a task lands in "완료": celebrate once when all of today's due
-  // tasks on this plan are done ("하루 목표"), and once when the plan's yearly
-  // goal reaches 100%. Each is deduped by a localStorage marker.
-  async function celebrateMilestones(list: Task[]) {
+  // "하루 목표": celebrate once when every task due today on this plan is done,
+  // and clear the marker whenever that stops being true (a task reopened, a new
+  // one added) so finishing the day again re-celebrates. Deduped via localStorage.
+  function celebrateDayMilestone(list: Task[]) {
     const todays = list.filter((t) => t.dueDate === today);
-    if (todays.length > 0 && todays.every((t) => t.status === 'done')) {
-      celebrateOnce(`day.${today}`, true, 'day');
-    }
+    celebrateOnce(
+      `day.${today}`,
+      todays.length > 0 && todays.every((t) => t.status === 'done'),
+      'day'
+    );
+  }
+
+  // Celebrate once when the plan's yearly goal reaches 100%; the marker clears
+  // if it later drops back below. Best-effort — never blocks the status change.
+  async function celebrateGoalMilestone() {
     try {
       const milestone = await checkGoalMilestone(planId);
       if (milestone) {
         celebrateOnce(`goal.${milestone.goalId}`, milestone.progress === 100, 'goal');
       }
     } catch {
-      /* milestone check is best-effort — never block the status change on it */
+      /* server round-trip failed — leave the marker as-is */
     }
   }
 

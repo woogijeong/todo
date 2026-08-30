@@ -83,13 +83,14 @@ export default function DashboardPlanPanels({
       const updated = await updateTaskStatus(taskId, newStatus);
       const settled = optimistic.map((t) => (t._id === taskId ? updated : t));
       setTasks(settled);
-      if (checked) {
-        // "하루 목표" — every task due today is now done.
-        const todays = settled.filter((t) => t.dueDate === todayString);
-        if (todays.length > 0 && todays.every((t) => t.status === 'done')) {
-          celebrateOnce(`day.${todayString}`, true, 'day');
-        }
-      }
+      // "하루 목표" — celebrate when every task due today is done, and clear the
+      // marker whenever that stops being true so re-completing re-celebrates.
+      const todays = settled.filter((t) => t.dueDate === todayString);
+      celebrateOnce(
+        `day.${todayString}`,
+        todays.length > 0 && todays.every((t) => t.status === 'done'),
+        'day'
+      );
     } catch {
       setTasks(previous);
       setError('상태 변경에 실패했습니다. 다시 시도해 주세요.');
